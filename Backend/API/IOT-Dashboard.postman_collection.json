@@ -1,0 +1,480 @@
+{
+  "info": {
+    "_postman_id": "79877b66-47c5-4f48-926c-ffb4d25ea85d",
+    "name": "IoT Dashboard API",
+    "description": "# IoT Dashboard API\n\nTài liệu và bộ request kiểm thử API cho hệ thống IoT Dashboard.\n\n## Xác thực\n\n1. Chọn environment **IoT Dashboard - Local**.\n2. Gửi request **01 - Authentication / Login**.\n3. Postman tự lưu cookie HttpOnly `jwt` trong cookie jar của `baseUrl`.\n4. Gọi các API nghiệp vụ.\n5. Gửi request **99 - Session / Logout** khi hoàn tất.\n\nResponse nghiệp vụ sử dụng wrapper `ApiResponse<T>`:\n\n```json\n{\n  \"code\": 0,\n  \"data\": {}\n}\n```\n\nResponse lỗi có `code`, `errorCode` và `message`. Trang phân trang bắt đầu từ `0`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Authentication",
+      "description": "Đăng nhập và tạo cookie JWT cho các request tiếp theo.",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Xác thực username/password. Nếu thành công, backend trả thông tin người dùng và đặt JWT vào cookie HttpOnly tên `jwt`. Postman tự lưu cookie này."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Đăng nhập thành công\", function () {",
+                  "  pm.expect(body.code).to.eql(0);",
+                  "  pm.expect(body.data.username).to.eql(pm.variables.get(\"username\"));",
+                  "});",
+                  "pm.test(\"Backend trả Set-Cookie jwt\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.include(\"jwt=\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Đăng nhập thành công",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+                },
+                "url": "{{baseUrl}}/api/auth/login"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"admin\",\n    \"fullname\": \"Nguyễn Đình Tô\",\n    \"email\": \"admin@example.com\"\n  }\n}"
+            },
+            {
+              "name": "Sai thông tin đăng nhập",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrong\"\n}"
+                },
+                "url": "{{baseUrl}}/api/auth/login"
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 401,\n  \"errorCode\": \"INVALID_CREDENTIALS\",\n  \"message\": \"Tên đăng nhập hoặc mật khẩu không đúng.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Dashboard",
+      "description": "Dữ liệu tổng hợp được frontend sử dụng khi hiển thị Dashboard.",
+      "item": [
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard"]
+            },
+            "description": "Lấy reading mới nhất của từng sensor, 24 reading gần nhất cho biểu đồ, danh sách thiết bị và các lệnh điều khiển đang `LOADING`. Yêu cầu cookie JWT."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Đúng cấu trúc Dashboard\", function () {",
+                  "  pm.expect(body.code).to.eql(0);",
+                  "  pm.expect(body.data.latestReadings).to.be.an(\"array\");",
+                  "  pm.expect(body.data.chartData).to.be.an(\"array\");",
+                  "  pm.expect(body.data.devices).to.be.an(\"array\");",
+                  "  pm.expect(body.data.pendingControls).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Thành công",
+              "originalRequest": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/dashboard" },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"latestReadings\": [\n      {\n        \"id\": 10,\n        \"sensorId\": 1,\n        \"sensorName\": \"Nhiệt độ (°C)\",\n        \"value\": 30.5,\n        \"recordedAt\": \"2026-10-14T09:00:00\"\n      }\n    ],\n    \"chartData\": [],\n    \"devices\": [\n      { \"id\": 1, \"name\": \"LED 1\", \"status\": \"OFF\" }\n    ],\n    \"pendingControls\": []\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Devices",
+      "description": "Điều khiển trạng thái thiết bị IoT.",
+      "item": [
+        {
+          "name": "Control Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"{{deviceAction}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/device/{{deviceId}}/control",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "device", "{{deviceId}}", "control"]
+            },
+            "description": "Gửi lệnh `ON` hoặc `OFF` cho thiết bị. Khi MQTT bật, response ban đầu thường có status `LOADING`; kết quả cuối được cập nhật qua MQTT/WebSocket. Mỗi thiết bị chỉ có một lệnh đang chờ."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Có kết quả điều khiển\", function () {",
+                  "  pm.expect(body.code).to.eql(0);",
+                  "  pm.expect(body.data.deviceId).to.eql(Number(pm.variables.get(\"deviceId\")));",
+                  "  pm.expect([\"LOADING\", \"ON\", \"OFF\"]).to.include(body.data.status);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Đã nhận lệnh",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"action\": \"ON\"\n}" },
+                "url": "{{baseUrl}}/api/device/1/control"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"historyId\": 42,\n    \"deviceId\": 1,\n    \"deviceName\": \"LED 1\",\n    \"action\": \"ON\",\n    \"status\": \"LOADING\",\n    \"performedAt\": \"2026-10-14T09:05:00\"\n  }\n}"
+            },
+            {
+              "name": "Thiết bị đang bận",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"action\": \"ON\"\n}" },
+                "url": "{{baseUrl}}/api/device/1/control"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 409,\n  \"errorCode\": \"DEVICE_BUSY\",\n  \"message\": \"Thiết bị đang chờ phản hồi lệnh trước.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Sensors",
+      "description": "Tra cứu dữ liệu cảm biến đã nhận qua MQTT.",
+      "item": [
+        {
+          "name": "Search Sensor Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data-sensor?page={{page}}&size={{size}}&search={{sensorSearch}}&sensor={{sensor}}&time={{time}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data-sensor"],
+              "query": [
+                { "key": "page", "value": "{{page}}", "description": "Trang bắt đầu từ 0" },
+                { "key": "size", "value": "{{size}}", "description": "Số bản ghi mỗi trang, tối đa 100" },
+                { "key": "search", "value": "{{sensorSearch}}", "description": "Tên sensor gần đúng hoặc giá trị số chính xác", "disabled": true },
+                { "key": "sensor", "value": "{{sensor}}", "description": "Tên sensor chính xác", "disabled": true },
+                { "key": "time", "value": "{{time}}", "description": "Prefix từ YYYY đến YYYY-MM-DD HH:mm:ss", "disabled": true }
+              ]
+            },
+            "description": "Tìm kiếm và phân trang reading. Có thể bật các query `search`, `sensor`, `time` trong tab Params khi cần."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Đúng cấu trúc phân trang\", function () {",
+                  "  pm.expect(body.code).to.eql(0);",
+                  "  pm.expect(body.data.content).to.be.an(\"array\");",
+                  "  pm.expect(body.data.page).to.be.a(\"number\");",
+                  "  pm.expect(body.data.totalElements).to.be.a(\"number\");",
+                  "  pm.expect(body.data.totalPages).to.be.a(\"number\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Thành công",
+              "originalRequest": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/data-sensor?page=0&size=20" },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"content\": [\n      {\n        \"id\": 10,\n        \"sensorId\": 1,\n        \"sensorName\": \"Nhiệt độ (°C)\",\n        \"value\": 30.5,\n        \"recordedAt\": \"2026-10-14T09:00:00\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalElements\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Action History",
+      "description": "Tra cứu lịch sử bật/tắt thiết bị.",
+      "item": [
+        {
+          "name": "Search Action History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/action-history?page={{page}}&size={{size}}&deviceId={{historyDeviceId}}&action={{historyAction}}&status={{historyStatus}}&time={{time}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "action-history"],
+              "query": [
+                { "key": "page", "value": "{{page}}", "description": "Trang bắt đầu từ 0" },
+                { "key": "size", "value": "{{size}}", "description": "Số bản ghi mỗi trang, tối đa 100" },
+                { "key": "deviceId", "value": "{{historyDeviceId}}", "description": "ID thiết bị", "disabled": true },
+                { "key": "action", "value": "{{historyAction}}", "description": "ON hoặc OFF", "disabled": true },
+                { "key": "status", "value": "{{historyStatus}}", "description": "LOADING, ON, OFF hoặc FAILED", "disabled": true },
+                { "key": "time", "value": "{{time}}", "description": "Prefix từ YYYY đến YYYY-MM-DD HH:mm:ss", "disabled": true }
+              ]
+            },
+            "description": "Tìm kiếm và phân trang lịch sử điều khiển. Bật các query tùy chọn trong tab Params để lọc."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Đúng cấu trúc phân trang\", function () {",
+                  "  pm.expect(body.code).to.eql(0);",
+                  "  pm.expect(body.data.content).to.be.an(\"array\");",
+                  "  pm.expect(body.data.totalElements).to.be.a(\"number\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Thành công",
+              "originalRequest": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/action-history?page=0&size=20" },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"content\": [\n      {\n        \"id\": 42,\n        \"deviceId\": 1,\n        \"deviceName\": \"LED 1\",\n        \"userId\": 1,\n        \"username\": \"admin\",\n        \"action\": \"ON\",\n        \"status\": \"ON\",\n        \"performedAt\": \"2026-10-14T09:05:00\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalElements\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Profile",
+      "description": "Hồ sơ người dùng đang đăng nhập.",
+      "item": [
+        {
+          "name": "Get Current Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile"]
+            },
+            "description": "Trả về hồ sơ của người dùng được xác định từ cookie JWT hiện tại."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Không lộ mật khẩu\", function () {",
+                  "  pm.expect(body.code).to.eql(0);",
+                  "  pm.expect(body.data.username).to.be.a(\"string\");",
+                  "  pm.expect(body.data).not.to.have.property(\"password\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Thành công",
+              "originalRequest": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/profile" },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1,\n    \"fullname\": \"Nguyễn Đình Tô\",\n    \"username\": \"admin\",\n    \"msv\": \"B23DCCN827\",\n    \"email\": \"admin@example.com\",\n    \"github\": \"https://github.com/example\",\n    \"postman\": \"https://documenter.getpostman.com/\",\n    \"figma\": \"https://figma.com/\",\n    \"pdf\": \"https://example.com/report.pdf\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - System",
+      "description": "Endpoint kiểm tra trạng thái backend, không yêu cầu JWT.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Spring Actuator health check. Response này không bọc trong `ApiResponse`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Ứng dụng UP\", function () {",
+                  "  pm.expect(pm.response.json().status).to.eql(\"UP\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ứng dụng hoạt động",
+              "originalRequest": { "method": "GET", "header": [], "url": "{{baseUrl}}/actuator/health" },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"UP\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "99 - Session",
+      "description": "Kết thúc phiên kiểm thử sau khi đã gọi các API nghiệp vụ.",
+      "item": [
+        {
+          "name": "Logout",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Xóa cookie JWT bằng Set-Cookie có Max-Age=0. Nên chạy request này cuối cùng."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Đăng xuất thành công\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Đăng xuất thành công",
+              "originalRequest": { "method": "POST", "header": [], "url": "{{baseUrl}}/api/auth/logout" },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"code\": 0\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+          "pm.test(\"Response là JSON\", function () {",
+          "  pm.expect(contentType.toLowerCase()).to.match(/application\\/(?:[^;]+\\+)?json/);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "username", "value": "admin", "type": "string" },
+    { "key": "password", "value": "admin123", "type": "string" },
+    { "key": "deviceId", "value": "1", "type": "string" },
+    { "key": "deviceAction", "value": "ON", "type": "string" },
+    { "key": "page", "value": "0", "type": "string" },
+    { "key": "size", "value": "20", "type": "string" }
+  ]
+}

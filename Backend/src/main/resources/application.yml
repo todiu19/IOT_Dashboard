@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: iot-dashboard
+  datasource:
+    url: jdbc:postgresql://localhost:5432/iot
+    username: postgres
+    password: Tonguyen24@
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  sql:
+    init:
+      mode: never
+
+server:
+  port: "8080"
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        http-only: true
+        same-site: lax
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  paths-to-match: /api/**
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:8080
+  jwt:
+    secret: "change-me-secret-key-todiu1912-iot-dashboard-2026"
+    expiration-ms: "86400000"
+  mqtt:
+    enabled: true
+    broker-url: tcp://localhost:1234
+    client-id: iot-dashboard-backend
+    username: NguyenDinhTo
+    password: B23DCCN827
+    sensordata-topic: sensor_data
+    controldevice-topic: control_device
+    statustopic: status
+    control-timeout: 30s
+    reconnect-delay: 10s

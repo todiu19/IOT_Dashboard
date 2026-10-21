@@ -1,0 +1,1312 @@
+openapi: 3.0.3
+info:
+  title: IoT Dashboard API
+  version: 1.0.0
+  description: |
+    Tài liệu RESTful API của hệ thống IoT Dashboard.
+    Backend: Spring Boot; cơ sở dữ liệu: PostgreSQL; thiết bị IoT: ESP32; MQTT Broker: Mosquitto.
+    API thành công trả {code: 0, data: ...}; logout chỉ trả {code: 0}.
+    API lỗi trả code, errorCode và message. Những thuộc tính null bị loại bỏ khỏi JSON.
+    JWT được lưu trong Cookie HttpOnly tên jwt, không truyền bằng Authorization: Bearer.
+servers:
+- url: http://localhost:8080
+  description: Máy chủ Backend nội bộ
+tags:
+- name: Authentication
+  description: Đăng nhập và đăng xuất bằng JWT Cookie.
+- name: Dashboard
+  description: Dữ liệu tổng hợp trên giao diện giám sát.
+- name: Devices
+  description: Gửi lệnh điều khiển thiết bị qua MQTT.
+- name: Sensors
+  description: Tìm kiếm và phân trang dữ liệu cảm biến.
+- name: Action History
+  description: Lọc và tra cứu lịch sử điều khiển.
+- name: Profile
+  description: Xem hồ sơ người dùng hiện tại.
+- name: System
+  description: Kiểm tra tình trạng hoạt động Backend.
+paths:
+  /api/auth/login:
+    post:
+      tags:
+      - Authentication
+      summary: Đăng nhập
+      description: |-
+        Xác thực username và password bằng bảng users. JWT được trả về qua Set-Cookie HttpOnly tên jwt, không nằm trong JSON Body.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        description: Thông tin đăng nhập bắt buộc.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: admin
+              password: admin123
+      responses:
+        '200':
+          description: Đăng nhập thành công.
+          headers:
+            Set-Cookie:
+              description: Cookie JWT HttpOnly do Backend thiết lập. Thuộc tính Secure và thời hạn tùy cấu hình.
+              schema:
+                type: string
+              example: jwt=<token>; HttpOnly; Path=/; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+              example:
+                code: 0
+                data:
+                  id: 1
+                  username: admin
+                  fullname: Nguyễn Văn A
+                  email: admin@example.com
+        '400':
+          description: Dữ liệu đăng nhập không hợp lệ.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                code: 400
+                errorCode: VALIDATION_ERROR
+                message: Dữ liệu đầu vào không hợp lệ.
+        '401':
+          description: Tên tài khoản hoặc mật khẩu không đúng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                code: 401
+                errorCode: INVALID_CREDENTIALS
+                message: Tên đăng nhập hoặc mật khẩu không chính xác.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /api/auth/logout:
+    post:
+      tags:
+      - Authentication
+      summary: Đăng xuất
+      description: |-
+        Xóa Cookie JWT bằng Set-Cookie với Max-Age=0. Không yêu cầu đăng nhập trước, không có Request Body.
+      operationId: logout
+      security: []
+      responses:
+        '200':
+          description: Đăng xuất thành công.
+          headers:
+            Set-Cookie:
+              description: Xóa Cookie JWT bằng Max-Age=0; phải khớp Path/Domain với Cookie gốc.
+              schema:
+                type: string
+              example: jwt=; Max-Age=0; HttpOnly; Path=/; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessNoData'
+              example:
+                code: 0
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /api/dashboard:
+    get:
+      tags:
+      - Dashboard
+      summary: Lấy dữ liệu Dashboard
+      description: |-
+        Truy xuất cảm biến mới nhất, dữ liệu biểu đồ, trạng thái thiết bị và các lệnh đang chờ xử lý từ PostgreSQL. Cập nhật mới có thể nhận thêm qua WebSocket/STOMP.
+      operationId: getDashboard
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Truy vấn Dashboard thành công.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSuccessResponse'
+              example:
+                code: 0
+                data:
+                  latestReadings:
+                  - id: 10
+                    sensorId: 1
+                    sensorName: Nhiệt độ (°C)
+                    value: 30.5
+                    recordedAt: '2026-10-14T09:00:00+07:00'
+                  chartData:
+                  - id: 10
+                    sensorId: 1
+                    sensorName: Nhiệt độ (°C)
+                    value: 30.5
+                    recordedAt: '2026-10-14T09:00:00+07:00'
+                  devices:
+                  - id: 1
+                    name: LED 1
+                    status: 'ON'
+                  - id: 2
+                    name: LED 2
+                    status: 'OFF'
+                  pendingControls:
+                  - historyId: 42
+                    deviceId: 1
+                    deviceName: LED 1
+                    action: 'ON'
+                    status: LOADING
+                    performedAt: '2026-10-14T09:05:00+07:00'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /api/device/{id}/control:
+    post:
+      tags:
+      - Devices
+      summary: Điều khiển thiết bị
+      description: |-
+        Nhận lệnh bật hoặc tắt thiết bị, gửi qua MQTT Broker đến ESP32. Trả về trạng thái ban đầu LOADING khi yêu cầu đang xử lý; chỉ xác nhận ON/OFF khi có phản hồi thiết bị.
+      operationId: controlDevice
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID thiết bị cần điều khiển.
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+        example: 1
+      requestBody:
+        required: true
+        description: Lệnh điều khiển ON hoặc OFF.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ControlRequest'
+            examples:
+              TurnOn:
+                summary: Bật LED
+                value:
+                  action: 'ON'
+              TurnOff:
+                summary: Tắt LED
+                value:
+                  action: 'OFF'
+      responses:
+        '200':
+          description: Yêu cầu điều khiển được tiếp nhận.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlSuccessResponse'
+              example:
+                code: 0
+                data:
+                  historyId: 42
+                  deviceId: 1
+                  deviceName: LED 1
+                  action: 'ON'
+                  status: LOADING
+                  performedAt: '2026-10-14T09:05:00+07:00'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy thiết bị.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                code: 404
+                errorCode: DEVICE_NOT_FOUND
+                message: Không tìm thấy thiết bị.
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /api/data-sensor:
+    get:
+      tags:
+      - Sensors
+      summary: Tìm kiếm dữ liệu cảm biến
+      description: |-
+        Tìm theo tên gần đúng hoặc giá trị số chính xác; lọc theo tên cảm biến và tiền tố thời gian; trả về danh sách được phân trang.
+      operationId: searchSensorData
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: search
+        in: query
+        required: false
+        description: Tên cảm biến gần đúng hoặc giá trị số chính xác.
+        schema:
+          type: string
+        example: Nhiệt
+      - name: sensor
+        in: query
+        required: false
+        description: Tên cảm biến chính xác.
+        schema:
+          type: string
+        example: Nhiệt độ (°C)
+      - name: time
+        in: query
+        required: false
+        description: 'Lọc theo tiền tố thời gian: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DD HH, YYYY-MM-DD HH:mm hoặc
+          YYYY-MM-DD HH:mm:ss.'
+        schema:
+          type: string
+        example: '2026-10-14'
+      - name: page
+        in: query
+        required: false
+        description: Số trang bắt đầu từ 0.
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+          default: 0
+        example: 0
+      - name: size
+        in: query
+        required: false
+        description: Số bản ghi mỗi trang, mặc định 7, tối đa 100.
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          default: 7
+        example: 7
+      responses:
+        '200':
+          description: Truy xuất dữ liệu cảm biến thành công.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageReadingSuccessResponse'
+              example:
+                code: 0
+                data:
+                  content:
+                  - id: 10
+                    sensorId: 1
+                    sensorName: Nhiệt độ (°C)
+                    value: 30.5
+                    recordedAt: '2026-10-14T09:00:00+07:00'
+                  page: 0
+                  size: 7
+                  totalElements: 1
+                  totalPages: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /api/action-history:
+    get:
+      tags:
+      - Action History
+      summary: Tìm kiếm lịch sử điều khiển
+      description: |-
+        Lọc bản ghi điều khiển theo thiết bị, hành động, trạng thái xử lý và tiền tố thời gian; hỗ trợ phân trang.
+      operationId: searchActionHistory
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: deviceId
+        in: query
+        required: false
+        description: ID thiết bị cần lọc.
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+        example: 1
+      - name: action
+        in: query
+        required: false
+        description: Lệnh ON hoặc OFF.
+        schema:
+          type: string
+          enum:
+          - 'ON'
+          - 'OFF'
+        example: 'ON'
+      - name: status
+        in: query
+        required: false
+        description: Trạng thái LOADING, ON, OFF hoặc FAILED.
+        schema:
+          type: string
+          enum:
+          - LOADING
+          - 'ON'
+          - 'OFF'
+          - FAILED
+        example: 'ON'
+      - name: time
+        in: query
+        required: false
+        description: 'Lọc theo tiền tố thời gian: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DD HH, YYYY-MM-DD HH:mm hoặc
+          YYYY-MM-DD HH:mm:ss.'
+        schema:
+          type: string
+        example: '2026-10-14'
+      - name: page
+        in: query
+        required: false
+        description: Số trang bắt đầu từ 0.
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+          default: 0
+        example: 0
+      - name: size
+        in: query
+        required: false
+        description: Số bản ghi mỗi trang, mặc định 7, tối đa 100.
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          default: 7
+        example: 7
+      responses:
+        '200':
+          description: Truy xuất lịch sử điều khiển thành công.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageActionHistorySuccessResponse'
+              example:
+                code: 0
+                data:
+                  content:
+                  - id: 42
+                    deviceId: 1
+                    deviceName: LED 1
+                    userId: 1
+                    username: admin
+                    action: 'ON'
+                    status: 'ON'
+                    performedAt: '2026-10-14T09:05:00+07:00'
+                  page: 0
+                  size: 7
+                  totalElements: 1
+                  totalPages: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /api/profile:
+    get:
+      tags:
+      - Profile
+      summary: Lấy hồ sơ người dùng hiện tại
+      description: |-
+        Lấy hồ sơ của người dùng xác định từ JWT Cookie. Các thuộc tính tùy chọn có giá trị null không xuất hiện trong Response JSON.
+      operationId: getCurrentProfile
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Lấy thông tin hồ sơ thành công.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSuccessResponse'
+              example:
+                code: 0
+                data:
+                  id: 1
+                  fullname: Nguyễn Văn A
+                  username: admin
+                  msv: B23DCCN001
+                  email: admin@example.com
+                  github: https://github.com/example
+                  postman: https://documenter.getpostman.com/
+                  figma: https://figma.com/
+                  pdf: https://example.com/report.pdf
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Không tìm thấy người dùng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                code: 404
+                errorCode: USER_NOT_FOUND
+                message: Không tìm thấy người dùng.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /actuator/health:
+    get:
+      tags:
+      - System
+      summary: Kiểm tra trạng thái backend
+      description: |-
+        Health Check của Spring Boot Actuator. Phản hồi chỉ chứa status, không bọc trong cấu trúc ApiResponse. Không yêu cầu JWT.
+      operationId: getHealthStatus
+      security: []
+      responses:
+        '200':
+          description: Ứng dụng hoạt động bình thường.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: UP
+        '503':
+          description: Ứng dụng hoặc thành phần được giám sát không khả dụng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: DOWN
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: jwt
+      description: JWT lưu trong Cookie HttpOnly tên jwt; trình duyệt gửi Cookie theo chính sách Cookie/CORS phù
+        hợp.
+  schemas:
+    ApiError:
+      type: object
+      description: Cấu trúc lỗi chung.
+      required:
+      - code
+      - errorCode
+      - message
+      properties:
+        code:
+          type: integer
+          description: Mã lỗi HTTP.
+          format: int32
+          enum:
+          - 400
+          - 401
+          - 403
+          - 404
+          - 405
+          - 409
+          - 500
+          - 503
+          example: 401
+        errorCode:
+          type: string
+          description: Mã định danh lỗi.
+          enum:
+          - INVALID_REQUEST
+          - VALIDATION_ERROR
+          - INVALID_CREDENTIALS
+          - UNAUTHENTICATED
+          - ACCESS_DENIED
+          - ENDPOINT_NOT_FOUND
+          - USER_NOT_FOUND
+          - DEVICE_NOT_FOUND
+          - DEVICE_BUSY
+          - SENSOR_NOT_FOUND
+          - METHOD_NOT_ALLOWED
+          - MQTT_UNAVAILABLE
+          - INTERNAL_ERROR
+          example: UNAUTHENTICATED
+        message:
+          type: string
+          description: Thông báo lỗi.
+          example: Chưa đăng nhập.
+      example:
+        code: 401
+        errorCode: UNAUTHENTICATED
+        message: Chưa đăng nhập.
+    ValidationError:
+      type: object
+      description: Lỗi xác thực dữ liệu yêu cầu.
+      required:
+      - code
+      - errorCode
+      - message
+      properties:
+        code:
+          type: integer
+          description: Mã HTTP 400.
+          enum:
+          - 400
+          example: 400
+        errorCode:
+          type: string
+          description: Mã lỗi dữ liệu không hợp lệ.
+          enum:
+          - VALIDATION_ERROR
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: Thông báo lỗi.
+          example: Dữ liệu đầu vào không hợp lệ.
+      example:
+        code: 400
+        errorCode: VALIDATION_ERROR
+        message: Dữ liệu đầu vào không hợp lệ.
+    LoginRequest:
+      type: object
+      description: Thông tin đăng nhập bắt buộc.
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập không được rỗng.
+          minLength: 1
+          example: admin
+        password:
+          type: string
+          description: Mật khẩu không được rỗng.
+          format: password
+          minLength: 1
+          example: admin123
+      example:
+        username: admin
+        password: admin123
+    UserResponse:
+      type: object
+      description: Thông tin tài khoản cơ bản (email có thể vắng mặt nếu null).
+      required:
+      - id
+      - username
+      - fullname
+      properties:
+        id:
+          type: integer
+          description: ID người dùng.
+          format: int32
+          example: 1
+        username:
+          type: string
+          description: Tên đăng nhập.
+          example: admin
+        fullname:
+          type: string
+          description: Họ tên.
+          example: Nguyễn Văn A
+        email:
+          type: string
+          description: Email (không trả về khi null).
+          format: email
+          example: admin@example.com
+      example:
+        id: 1
+        username: admin
+        fullname: Nguyễn Văn A
+        email: admin@example.com
+    ReadingResponse:
+      type: object
+      description: Một bản ghi giá trị cảm biến.
+      required:
+      - id
+      - sensorId
+      - sensorName
+      - value
+      - recordedAt
+      properties:
+        id:
+          type: integer
+          description: ID bản ghi.
+          format: int32
+          example: 10
+        sensorId:
+          type: integer
+          description: ID cảm biến.
+          format: int32
+          example: 1
+        sensorName:
+          type: string
+          description: Tên cảm biến.
+          example: Nhiệt độ (°C)
+        value:
+          type: number
+          description: Giá trị đo.
+          format: double
+          example: 30.5
+        recordedAt:
+          type: string
+          description: Thời điểm đo theo ISO 8601.
+          format: date-time
+          example: '2026-10-14T09:00:00+07:00'
+      example:
+        id: 10
+        sensorId: 1
+        sensorName: Nhiệt độ (°C)
+        value: 30.5
+        recordedAt: '2026-10-14T09:00:00+07:00'
+    DeviceResponse:
+      type: object
+      description: Thông tin trạng thái thiết bị.
+      required:
+      - id
+      - name
+      - status
+      properties:
+        id:
+          type: integer
+          description: ID thiết bị.
+          format: int32
+          example: 1
+        name:
+          type: string
+          description: Tên thiết bị.
+          example: LED 1
+        status:
+          type: string
+          description: Trạng thái thiết bị.
+          enum:
+          - 'ON'
+          - 'OFF'
+          example: 'ON'
+      example:
+        id: 1
+        name: LED 1
+        status: 'ON'
+    ControlRequest:
+      type: object
+      description: Lệnh bật/tắt.
+      required:
+      - action
+      properties:
+        action:
+          type: string
+          description: Lệnh điều khiển thiết bị.
+          enum:
+          - 'ON'
+          - 'OFF'
+          example: 'ON'
+      example:
+        action: 'ON'
+    ControlResponse:
+      type: object
+      description: Thông tin một yêu cầu điều khiển.
+      required:
+      - historyId
+      - deviceId
+      - deviceName
+      - action
+      - status
+      - performedAt
+      properties:
+        historyId:
+          type: integer
+          description: ID lịch sử.
+          format: int32
+          example: 42
+        deviceId:
+          type: integer
+          description: ID thiết bị.
+          format: int32
+          example: 1
+        deviceName:
+          type: string
+          description: Tên thiết bị.
+          example: LED 1
+        action:
+          type: string
+          description: Hành động yêu cầu.
+          enum:
+          - 'ON'
+          - 'OFF'
+          example: 'ON'
+        status:
+          type: string
+          description: Trạng thái xử lý; LOADING là chưa xác nhận thao tác hoàn tất.
+          enum:
+          - LOADING
+          - 'ON'
+          - 'OFF'
+          - FAILED
+          example: LOADING
+        performedAt:
+          type: string
+          description: Thời điểm tạo yêu cầu.
+          format: date-time
+          example: '2026-10-14T09:05:00+07:00'
+      example:
+        historyId: 42
+        deviceId: 1
+        deviceName: LED 1
+        action: 'ON'
+        status: LOADING
+        performedAt: '2026-10-14T09:05:00+07:00'
+    DashboardResponse:
+      type: object
+      description: Dữ liệu tổng hợp hiển thị Dashboard.
+      required:
+      - latestReadings
+      - chartData
+      - devices
+      - pendingControls
+      properties:
+        latestReadings:
+          type: array
+          description: Các giá trị cảm biến mới nhất.
+          items:
+            $ref: '#/components/schemas/ReadingResponse'
+        chartData:
+          type: array
+          description: Dữ liệu dùng dựng biểu đồ.
+          items:
+            $ref: '#/components/schemas/ReadingResponse'
+        devices:
+          type: array
+          description: Danh sách thiết bị.
+          items:
+            $ref: '#/components/schemas/DeviceResponse'
+        pendingControls:
+          type: array
+          description: Các thao tác đang chờ.
+          items:
+            $ref: '#/components/schemas/ControlResponse'
+      example:
+        latestReadings:
+        - id: 10
+          sensorId: 1
+          sensorName: Nhiệt độ (°C)
+          value: 30.5
+          recordedAt: '2026-10-14T09:00:00+07:00'
+        chartData:
+        - id: 10
+          sensorId: 1
+          sensorName: Nhiệt độ (°C)
+          value: 30.5
+          recordedAt: '2026-10-14T09:00:00+07:00'
+        devices:
+        - id: 1
+          name: LED 1
+          status: 'ON'
+        - id: 2
+          name: LED 2
+          status: 'OFF'
+        pendingControls:
+        - historyId: 42
+          deviceId: 1
+          deviceName: LED 1
+          action: 'ON'
+          status: LOADING
+          performedAt: '2026-10-14T09:05:00+07:00'
+    ActionHistoryResponse:
+      type: object
+      description: Một bản ghi lịch sử điều khiển.
+      required:
+      - id
+      - deviceId
+      - deviceName
+      - userId
+      - username
+      - action
+      - status
+      - performedAt
+      properties:
+        id:
+          type: integer
+          description: ID bản ghi.
+          format: int32
+          example: 42
+        deviceId:
+          type: integer
+          description: ID thiết bị.
+          format: int32
+          example: 1
+        deviceName:
+          type: string
+          description: Tên thiết bị.
+          example: LED 1
+        userId:
+          type: integer
+          description: ID người điều khiển.
+          format: int32
+          example: 1
+        username:
+          type: string
+          description: Tên người điều khiển.
+          example: admin
+        action:
+          type: string
+          description: Lệnh thực hiện.
+          enum:
+          - 'ON'
+          - 'OFF'
+          example: 'ON'
+        status:
+          type: string
+          description: Trạng thái xử lý.
+          enum:
+          - LOADING
+          - 'ON'
+          - 'OFF'
+          - FAILED
+          example: 'ON'
+        performedAt:
+          type: string
+          description: Thời điểm thao tác.
+          format: date-time
+          example: '2026-10-14T09:05:00+07:00'
+      example:
+        id: 42
+        deviceId: 1
+        deviceName: LED 1
+        userId: 1
+        username: admin
+        action: 'ON'
+        status: 'ON'
+        performedAt: '2026-10-14T09:05:00+07:00'
+    ProfileResponse:
+      type: object
+      description: Thông tin hồ sơ người dùng (các thuộc tính null không xuất hiện).
+      required:
+      - id
+      - fullname
+      - username
+      properties:
+        id:
+          type: integer
+          description: ID người dùng.
+          format: int32
+          example: 1
+        fullname:
+          type: string
+          description: Họ và tên.
+          example: Nguyễn Văn A
+        username:
+          type: string
+          description: Tên đăng nhập.
+          example: admin
+        msv:
+          type: string
+          description: Mã sinh viên.
+          example: B23DCCN001
+        email:
+          type: string
+          description: Email.
+          format: email
+          example: admin@example.com
+        github:
+          type: string
+          description: Liên kết GitHub.
+          format: uri
+          example: https://github.com/example
+        postman:
+          type: string
+          description: Liên kết Postman.
+          format: uri
+          example: https://documenter.getpostman.com/
+        figma:
+          type: string
+          description: Liên kết Figma.
+          format: uri
+          example: https://figma.com/
+        pdf:
+          type: string
+          description: Liên kết báo cáo PDF.
+          format: uri
+          example: https://example.com/report.pdf
+      example:
+        id: 1
+        fullname: Nguyễn Văn A
+        username: admin
+        msv: B23DCCN001
+        email: admin@example.com
+        github: https://github.com/example
+        postman: https://documenter.getpostman.com/
+        figma: https://figma.com/
+        pdf: https://example.com/report.pdf
+    PageResponseReading:
+      type: object
+      description: Trang kết quả dữ liệu cảm biến.
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          description: Danh sách bản ghi của trang.
+          items:
+            $ref: '#/components/schemas/ReadingResponse'
+        page:
+          type: integer
+          description: Số trang tính từ 0.
+          format: int32
+          minimum: 0
+          example: 0
+        size:
+          type: integer
+          description: Số bản ghi tối đa mỗi trang.
+          format: int32
+          minimum: 1
+          maximum: 100
+          example: 7
+        totalElements:
+          type: integer
+          description: Tổng số bản ghi.
+          format: int64
+          minimum: 0
+          example: 1
+        totalPages:
+          type: integer
+          description: Tổng số trang.
+          format: int32
+          minimum: 0
+          example: 1
+      example:
+        content:
+        - id: 10
+          sensorId: 1
+          sensorName: Nhiệt độ (°C)
+          value: 30.5
+          recordedAt: '2026-10-14T09:00:00+07:00'
+        page: 0
+        size: 7
+        totalElements: 1
+        totalPages: 1
+    PageResponseActionHistory:
+      type: object
+      description: Trang kết quả lịch sử điều khiển.
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          description: Danh sách bản ghi của trang.
+          items:
+            $ref: '#/components/schemas/ActionHistoryResponse'
+        page:
+          type: integer
+          description: Số trang tính từ 0.
+          format: int32
+          minimum: 0
+          example: 0
+        size:
+          type: integer
+          description: Số bản ghi tối đa mỗi trang.
+          format: int32
+          minimum: 1
+          maximum: 100
+          example: 7
+        totalElements:
+          type: integer
+          description: Tổng số bản ghi.
+          format: int64
+          minimum: 0
+          example: 1
+        totalPages:
+          type: integer
+          description: Tổng số trang.
+          format: int32
+          minimum: 0
+          example: 1
+      example:
+        content:
+        - id: 42
+          deviceId: 1
+          deviceName: LED 1
+          userId: 1
+          username: admin
+          action: 'ON'
+          status: 'ON'
+          performedAt: '2026-10-14T09:05:00+07:00'
+        page: 0
+        size: 7
+        totalElements: 1
+        totalPages: 1
+    ApiSuccessNoData:
+      type: object
+      description: Phản hồi thành công không có trường data.
+      required:
+      - code
+      properties:
+        code:
+          type: integer
+          description: Luôn bằng 0.
+          format: int32
+          enum:
+          - 0
+          example: 0
+      example:
+        code: 0
+    LoginSuccessResponse:
+      type: object
+      description: Phản hồi đăng nhập thành công.
+      required:
+      - code
+      - data
+      properties:
+        code:
+          type: integer
+          description: Luôn bằng 0.
+          format: int32
+          enum:
+          - 0
+          example: 0
+        data:
+          $ref: '#/components/schemas/UserResponse'
+    DashboardSuccessResponse:
+      type: object
+      description: Phản hồi Dashboard thành công.
+      required:
+      - code
+      - data
+      properties:
+        code:
+          type: integer
+          description: Luôn bằng 0.
+          format: int32
+          enum:
+          - 0
+          example: 0
+        data:
+          $ref: '#/components/schemas/DashboardResponse'
+    ControlSuccessResponse:
+      type: object
+      description: Phản hồi điều khiển thành công.
+      required:
+      - code
+      - data
+      properties:
+        code:
+          type: integer
+          description: Luôn bằng 0.
+          format: int32
+          enum:
+          - 0
+          example: 0
+        data:
+          $ref: '#/components/schemas/ControlResponse'
+    PageReadingSuccessResponse:
+      type: object
+      description: Phản hồi truy vấn cảm biến.
+      required:
+      - code
+      - data
+      properties:
+        code:
+          type: integer
+          description: Luôn bằng 0.
+          format: int32
+          enum:
+          - 0
+          example: 0
+        data:
+          $ref: '#/components/schemas/PageResponseReading'
+    PageActionHistorySuccessResponse:
+      type: object
+      description: Phản hồi truy vấn lịch sử điều khiển.
+      required:
+      - code
+      - data
+      properties:
+        code:
+          type: integer
+          description: Luôn bằng 0.
+          format: int32
+          enum:
+          - 0
+          example: 0
+        data:
+          $ref: '#/components/schemas/PageResponseActionHistory'
+    ProfileSuccessResponse:
+      type: object
+      description: Phản hồi thông tin người dùng.
+      required:
+      - code
+      - data
+      properties:
+        code:
+          type: integer
+          description: Luôn bằng 0.
+          format: int32
+          enum:
+          - 0
+          example: 0
+        data:
+          $ref: '#/components/schemas/ProfileResponse'
+    HealthResponse:
+      type: object
+      description: Phản hồi Spring Boot Actuator, không bọc trong ApiResponse.
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          description: Trạng thái ứng dụng.
+          enum:
+          - UP
+          - DOWN
+          - UNKNOWN
+          - OUT_OF_SERVICE
+          example: UP
+      example:
+        status: UP
+  responses:
+    BadRequest:
+      description: Tham số hoặc dữ liệu không hợp lệ.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            InvalidRequest:
+              summary: Yêu cầu không hợp lệ
+              value:
+                code: 400
+                errorCode: INVALID_REQUEST
+                message: Tham số yêu cầu không hợp lệ.
+            ValidationError:
+              summary: Sai dữ liệu đầu vào
+              value:
+                code: 400
+                errorCode: VALIDATION_ERROR
+                message: Dữ liệu đầu vào không hợp lệ.
+    Unauthorized:
+      description: Chưa đăng nhập hoặc JWT không hợp lệ.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 401
+            errorCode: UNAUTHENTICATED
+            message: Chưa đăng nhập.
+    Forbidden:
+      description: Người dùng không có quyền truy cập.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 403
+            errorCode: ACCESS_DENIED
+            message: Bạn không có quyền truy cập.
+    NotFound:
+      description: Không tìm thấy tài nguyên.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            Endpoint:
+              summary: Endpoint không tồn tại
+              value:
+                code: 404
+                errorCode: ENDPOINT_NOT_FOUND
+                message: Không tìm thấy API.
+            User:
+              summary: Người dùng không tồn tại
+              value:
+                code: 404
+                errorCode: USER_NOT_FOUND
+                message: Không tìm thấy người dùng.
+            Device:
+              summary: Thiết bị không tồn tại
+              value:
+                code: 404
+                errorCode: DEVICE_NOT_FOUND
+                message: Không tìm thấy thiết bị.
+            Sensor:
+              summary: Cảm biến không tồn tại
+              value:
+                code: 404
+                errorCode: SENSOR_NOT_FOUND
+                message: Không tìm thấy cảm biến.
+    Conflict:
+      description: Thiết bị đang bận xử lý yêu cầu khác.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 409
+            errorCode: DEVICE_BUSY
+            message: Thiết bị đang xử lý lệnh khác.
+    ServiceUnavailable:
+      description: Không thể giao tiếp với MQTT Broker.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 503
+            errorCode: MQTT_UNAVAILABLE
+            message: MQTT Broker không khả dụng.
+    InternalServerError:
+      description: Lỗi không mong muốn tại Backend.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 500
+            errorCode: INTERNAL_ERROR
+            message: Đã xảy ra lỗi trong hệ thống.
+    MethodNotAllowed:
+      description: Phương thức HTTP không hỗ trợ.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 405
+            errorCode: METHOD_NOT_ALLOWED
+            message: Phương thức HTTP không được hỗ trợ.

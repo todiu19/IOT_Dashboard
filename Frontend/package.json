@@ -1,0 +1,21 @@
+{
+  "name": "iot-dashboard-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test src/utils/date.test.js src/utils/chart.test.js src/utils/controlStatus.test.js src/api.test.js"
+  },
+  "dependencies": {
+    "@stomp/stompjs": "^7.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.3"
+  }
+}

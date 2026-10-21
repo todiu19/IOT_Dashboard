@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:iot_dashboard;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: create-drop
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:test-seed.sql
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+  mqtt:
+    enabled: false
+    broker-url: tcp://localhost:1883
+    client-id: iot-dashboard-test
+    username: ""
+    password: ""
+    sensordata-topic: sensor_data
+    statustopic: status
+    controldevice-topic: control_device
+    control-timeout: 30s
+    reconnect-delay: 10s
