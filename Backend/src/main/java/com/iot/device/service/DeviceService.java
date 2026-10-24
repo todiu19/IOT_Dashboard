@@ -14,6 +14,8 @@ import com.iot.mqtt.MqttClientService;
 import com.iot.domain.repository.UserRepository;
 import com.iot.domain.repository.DeviceRepository;
 import com.iot.domain.repository.ActionHistoryRepository;
+import com.iot.domain.repository.AlertHistoryRepository;
+import com.iot.domain.entity.AlertHistory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,6 +23,7 @@ import com.iot.common.exception.ErrorCode;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.*;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -30,16 +33,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 
 @Service
 public class DeviceService {
 
     private static final Logger log = LoggerFactory.getLogger(DeviceService.class);
+    private static final String AUTOMATION_USERNAME = "iot-system";
 
     private final DeviceRepository devices;
     private final ActionHistoryRepository histories;
+    private final AlertHistoryRepository alertHistories;
     private final UserRepository users;
+    private final PasswordEncoder passwords;
     private final MqttClientService mqtt;
     private final MqttProperties mqttProperties;
     private final TaskScheduler scheduler;
@@ -49,7 +57,9 @@ public class DeviceService {
     public DeviceService(
             DeviceRepository devices,
             ActionHistoryRepository histories,
+            AlertHistoryRepository alertHistories,
             UserRepository users,
+            PasswordEncoder passwords,
             MqttClientService mqtt,
             MqttProperties mqttProperties,
             @Qualifier("taskScheduler") TaskScheduler scheduler,
@@ -58,7 +68,9 @@ public class DeviceService {
     ) {
         this.devices = devices;
         this.histories = histories;
+        this.alertHistories = alertHistories;
         this.users = users;
+        this.passwords = passwords;
         this.mqtt = mqtt;
         this.mqttProperties = mqttProperties;
         this.scheduler = scheduler;
@@ -67,6 +79,10 @@ public class DeviceService {
     }
 
     public ControlResponse control(Integer deviceId, DeviceState action, String username) {
+        if (Integer.valueOf(4).equals(deviceId)) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST,
+                    "Đèn cảnh báo được backend tự động điều khiển theo ngưỡng ánh sáng.");
+        }
         // Commit LOADING trước khi gửi MQTT để phản hồi nhanh vẫn tìm thấy lịch sử lệnh.
         ControlResponse loading = transactions.execute(status -> {
             Device device = devices.findByIdForUpdate(deviceId)
@@ -110,6 +126,15 @@ public class DeviceService {
         ActionHistory history = histories
                 .findFirstByDeviceIdAndStatusOrderByPerformedAtDesc(event.deviceId(), ActionResult.LOADING)
                 .orElse(null);
+        if (event.deviceId() == 4 && device.getStatus() != event.status()) {
+            alertHistories.save(new AlertHistory(event.status(), LocalDateTime.now()));
+            if (history == null) {
+                User system = users.findByUsername(AUTOMATION_USERNAME).orElseGet(() ->
+                        users.save(new User("Hệ thống", AUTOMATION_USERNAME,
+                                passwords.encode(UUID.randomUUID().toString()), "SYSTEM", null)));
+                history = histories.save(new ActionHistory(device, system, event.status()));
+            }
+        }
         device.changeStatus(event.status());
         if (history != null) {
             if (Instant.now().isAfter(deadline(toControlResponse(history)))) history.fail(ActionResult.FAILED);

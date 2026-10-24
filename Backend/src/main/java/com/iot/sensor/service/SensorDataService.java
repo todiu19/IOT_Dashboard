@@ -56,12 +56,19 @@ public class SensorDataService {
                         builder.lower(root.join("sensor").get("name")),
                         "%" + term.toLowerCase() + "%"
                 );
+                var searchMatches = new ArrayList<Predicate>();
+                searchMatches.add(sensorNameMatches);
                 try {
-                    predicates.add(builder.or(sensorNameMatches,
-                            builder.equal(root.get("value"), new BigDecimal(term))));
-                } catch (NumberFormatException exception) {
-                    predicates.add(sensorNameMatches);
+                    searchMatches.add(builder.equal(root.get("value"), new BigDecimal(term)));
+                } catch (NumberFormatException ignored) {
+                    // Từ khóa không phải số vẫn được tìm theo tên hoặc thời gian.
                 }
+                try {
+                    searchMatches.add(TimePrefixFilter.matches(term, root.get("recordedAt"), builder));
+                } catch (ApiException ignored) {
+                    // Tìm tổng hợp không bắt buộc từ khóa phải là thời gian hợp lệ.
+                }
+                predicates.add(builder.or(searchMatches.toArray(Predicate[]::new)));
             }
             if (sensorName != null && !sensorName.isBlank()) {
                 predicates.add(builder.equal(root.join("sensor").get("name"), sensorName));

@@ -27,7 +27,7 @@ public class DeviceController {
     }
 
     @PostMapping("/device/{id}/control")
-    @Operation(summary = "Điều khiển thiết bị", description = "Gửi lệnh ON hoặc OFF tới thiết bị qua MQTT.")
+    @Operation(summary = "Điều khiển thiết bị", description = "Gửi lệnh ON hoặc OFF tới thiết bị qua MQTT. LED cảnh báo ID 4 do backend tự điều khiển, không nhận lệnh thủ công.")
     public ApiResponse<ControlResponse> control(
             @Parameter(description = "ID thiết bị", example = "1") @PathVariable Integer id,
             @Valid @RequestBody ControlRequest request,

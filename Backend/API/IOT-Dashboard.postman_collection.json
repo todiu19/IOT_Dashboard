@@ -133,6 +133,21 @@
               "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"latestReadings\": [\n      {\n        \"id\": 10,\n        \"sensorId\": 1,\n        \"sensorName\": \"Nhiệt độ (°C)\",\n        \"value\": 30.5,\n        \"recordedAt\": \"2026-10-14T09:00:00\"\n      }\n    ],\n    \"chartData\": [],\n    \"devices\": [\n      { \"id\": 1, \"name\": \"LED 1\", \"status\": \"OFF\" }\n    ],\n    \"pendingControls\": []\n  }\n}"
             }
           ]
+        },
+        {
+          "name": "Get Monthly Alert Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/alert-statistics?month=2026-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "alert-statistics"],
+              "query": [{ "key": "month", "value": "2026-10", "description": "Tháng YYYY-MM" }]
+            },
+            "description": "Đếm bật/tắt cảnh báo LED 4 được ESP32 xác nhận theo từng ngày trong tháng. ACK trùng không tăng số lần; days gồm tất cả ngày trong tháng. Cần cookie JWT."
+          },
+          "response": []
         }
       ]
     },
@@ -223,7 +238,7 @@
               "query": [
                 { "key": "page", "value": "{{page}}", "description": "Trang bắt đầu từ 0" },
                 { "key": "size", "value": "{{size}}", "description": "Số bản ghi mỗi trang, tối đa 100" },
-                { "key": "search", "value": "{{sensorSearch}}", "description": "Tên sensor gần đúng hoặc giá trị số chính xác", "disabled": true },
+                { "key": "search", "value": "{{sensorSearch}}", "description": "Tên sensor gần đúng, giá trị số chính xác hoặc tiền tố thời gian YYYY-MM-DD HH:mm:ss", "disabled": true },
                 { "key": "sensor", "value": "{{sensor}}", "description": "Tên sensor chính xác", "disabled": true },
                 { "key": "time", "value": "{{time}}", "description": "Prefix từ YYYY đến YYYY-MM-DD HH:mm:ss", "disabled": true }
               ]

@@ -15,7 +15,7 @@ export default function ActionHistoryPage({ filters, devices, onFilterChange, on
           <span className="sr-only">Thiết bị</span>
           <select className="control" value={filters.deviceId} onChange={(event) => onFilterChange("deviceId", event.target.value)}>
             <option value="">Tất cả thiết bị</option>
-            {devices.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
+            {devices.map((device) => <option key={device.id} value={device.id}>{device.id === 4 ? "Cảnh báo" : device.name}</option>)}
           </select>
         </label>
         <label>
@@ -40,7 +40,7 @@ export default function ActionHistoryPage({ filters, devices, onFilterChange, on
             <tbody>
               {rows.length ? rows.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.id}</td><td>{item.deviceName}</td><td>{item.username}</td>
+                  <td>{item.id}</td><td>{item.deviceId === 4 ? "Cảnh báo" : item.deviceName}</td><td>{item.username === "iot-system" ? "Hệ thống" : item.username}</td>
                   <td className={`status ${["ON", "OFF"].includes(item.action) ? item.action.toLowerCase() : ""}`}>{item.action}</td>
                   <td className={`status ${["ON", "OFF", "LOADING", "FAILED"].includes(item.status) ? item.status.toLowerCase() : ""}`}>{item.status}</td>
                   <td><CopyableDateTime value={item.performedAt} /></td>

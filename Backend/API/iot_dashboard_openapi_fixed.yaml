@@ -172,6 +172,63 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+  /api/dashboard/alert-statistics:
+    get:
+      tags: [Dashboard]
+      summary: Thống kê bật/tắt cảnh báo theo ngày trong tháng
+      description: Đếm chuyển trạng thái LED 4 đã được ESP32 xác nhận. ACK trùng không tăng số lần. Ngày chưa có sự kiện trả 0.
+      operationId: getAlertStatistics
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: month
+        in: query
+        required: true
+        description: Tháng theo dạng YYYY-MM.
+        schema:
+          type: string
+          example: '2026-10'
+      responses:
+        '200':
+          description: Thống kê tháng thành công, days chứa tất cả ngày trong tháng.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: object
+                    properties:
+                      month:
+                        type: string
+                        example: '2026-10'
+                      totalOn:
+                        type: integer
+                        format: int64
+                      totalOff:
+                        type: integer
+                        format: int64
+                      days:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                              format: date
+                            onCount:
+                              type: integer
+                              format: int64
+                            offCount:
+                              type: integer
+                              format: int64
+        '400':
+          description: Tháng không hợp lệ hoặc thiếu tham số month.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/device/{id}/control:
     post:
       tags:
@@ -262,7 +319,7 @@ paths:
       - name: search
         in: query
         required: false
-        description: Tên cảm biến gần đúng hoặc giá trị số chính xác.
+        description: Tên cảm biến gần đúng, giá trị số chính xác hoặc tiền tố thời gian YYYY-MM-DD HH:mm:ss.
         schema:
           type: string
         example: Nhiệt

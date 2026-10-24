@@ -1,7 +1,7 @@
 import TableFooter from "../components/TableFooter.jsx";
 import CopyableDateTime from "../components/CopyableDateTime.jsx";
 
-export default function DataSensorPage({ filters, filterMode, onFilterChange, onFilterModeChange, onRefresh, result, error, page, size, onPageChange, onSizeChange }) {
+export default function DataSensorPage({ search, filterMode, onSearchChange, onFilterModeChange, onRefresh, result, error, page, size, onPageChange, onSizeChange }) {
   const rows = result.content || [];
   return (
     <section className="page">
@@ -13,10 +13,10 @@ export default function DataSensorPage({ filters, filterMode, onFilterChange, on
           <input
             className="control"
             type="text"
-            placeholder={filterMode === "time" ? "YYYY-MM-DD HH:mm:ss" : "Nhập giá trị tìm kiếm"}
-            title={filterMode === "time" ? "YYYY-MM-DD HH:mm:ss; nhập đến đâu lọc đến đó" : undefined}
-            value={filterMode === "time" ? filters.date : filters.search}
-            onChange={(event) => onFilterChange(filterMode === "time" ? "date" : "search", event.target.value)}
+            placeholder={filterMode === "time" ? "YYYY-MM-DD HH:mm:ss" : "Nhập giá trị, cảm biến hoặc thời gian"}
+            title="Thời gian nhập theo YYYY-MM-DD HH:mm:ss; có thể nhập năm, tháng, ngày hoặc đầy đủ"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
           />
         </label>
         <label>

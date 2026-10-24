@@ -80,6 +80,15 @@ public class MqttClientService implements MqttCallbackExtended {
     }
 
     public void publishControl(Integer deviceId, DeviceState action) {
+        publishControl(deviceId, action, true);
+    }
+
+    // Dùng trong callback nhận data: không chặn luồng Paho đang xử lý MQTT.
+    public void publishControlAsync(Integer deviceId, DeviceState action) {
+        publishControl(deviceId, action, false);
+    }
+
+    private void publishControl(Integer deviceId, DeviceState action, boolean waitForAck) {
         if (!properties.enabled()) return;
         if (client == null || !client.isConnected()) {
             throw new ApiException(ErrorCode.MQTT_UNAVAILABLE, "MQTT Broker chưa kết nối.");
@@ -92,8 +101,9 @@ public class MqttClientService implements MqttCallbackExtended {
                     .toString();
             MqttMessage message = new MqttMessage(payload.getBytes(StandardCharsets.UTF_8));
             message.setQos(1);
-            client.publish(properties.controldeviceTopic(), message).waitForCompletion(5000);
-                log.info("Đã gửi MQTT control: topic={}, deviceId={}, command={}",
+            IMqttDeliveryToken delivery = client.publish(properties.controldeviceTopic(), message);
+            if (waitForAck) delivery.waitForCompletion(5000);
+            log.info("Đã gửi MQTT control: topic={}, deviceId={}, command={}",
                     properties.controldeviceTopic(), deviceId, action);
         } catch (MqttException exception) {
             throw new ApiException(ErrorCode.MQTT_UNAVAILABLE, "Không thể gửi lệnh tới MQTT Broker.");

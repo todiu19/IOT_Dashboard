@@ -153,6 +153,16 @@ class DeviceControlStatusTests {
     }
 
     @Test
+    void warningLedCannotBeControlledManually() {
+        for (DeviceState action : DeviceState.values()) {
+            ApiException error = assertThrows(ApiException.class, () -> service.control(4, action, "admin"));
+            assertEquals(ErrorCode.INVALID_REQUEST, error.getErrorCode());
+        }
+        assertEquals(0, histories.count());
+        verify(mqtt, never()).publishControl(any(), any());
+    }
+
+    @Test
     void secondCommandForSameDeviceIsRejectedWhileLoading() {
         service.control(1, DeviceState.ON, "admin");
         ApiException error = assertThrows(ApiException.class, () -> service.control(1, DeviceState.OFF, "admin"));

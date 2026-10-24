@@ -5,6 +5,7 @@ export const API = {
   profile: "/api/profile",
   logout: "/api/auth/logout",
   dashboard: "/api/dashboard",
+  alertStatistics: "/api/dashboard/alert-statistics",
   sensors: "/api/data-sensor",
   history: "/api/action-history",
   controlDevice: (id) => `/api/device/${id}/control`

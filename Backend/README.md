@@ -33,7 +33,7 @@ Mỗi tính năng có `controller` và `service`; entity và repository nằm ch
 
 Yêu cầu: Java 21 và PostgreSQL đang chạy.
 
-Nếu muốn dùng dữ liệu mẫu, chạy `dataseed.sql` **một lần trên PostgreSQL trống, trước khi khởi động backend**. File có lệnh `CREATE TABLE` cho cả 5 bảng, nên không chạy lại trên database đã có bảng. Ví dụ từ thư mục `Backend`:
+Nếu muốn dùng dữ liệu mẫu, chạy `dataseed.sql` **một lần trên PostgreSQL trống, trước khi khởi động backend**. File có lệnh `CREATE TABLE` cho cả 6 bảng, nên không chạy lại trên database đã có bảng. Ví dụ từ thư mục `Backend`:
 
 ```bash
 psql -h localhost -U postgres -d iot -f dataseed.sql
@@ -163,7 +163,7 @@ Query của `GET /api/data-sensor`:
 
 | Tham số | Mặc định | Ý nghĩa |
 | --- | --- | --- |
-| `search` | Không lọc | Tìm gần đúng theo tên sensor hoặc khớp chính xác giá trị số |
+| `search` | Không lọc | Tên sensor gần đúng, giá trị số chính xác hoặc tiền tố thời gian `YYYY-MM-DD HH:mm:ss` (kết hợp OR) |
 | `sensor` | Không lọc | Tên sensor chính xác, ví dụ `Nhiệt độ (°C)` |
 | `time` | Không lọc | Prefix thời gian, từ `YYYY` đến `YYYY-MM-DD HH:mm:ss` |
 | `page` | `0` | Trang bắt đầu từ 0 |
@@ -195,6 +195,16 @@ Response GET phân trang có `content`, `page`, `size`, `totalElements`, `totalP
 | ESP32 → Backend | `sensor_data` | `{"temperature":30.50,"humidity":47.00,"light":1370}` |
 | Backend → ESP32 | `control_device` | `{"deviceId":1,"command":"ON"}` |
 | ESP32 → Backend | `status` | `{"deviceId":3,"status":"OFF"}` |
+
+LED ID `4` là đèn cảnh báo ánh sáng, chỉ do backend tự điều khiển; gọi API điều khiển thủ công cho ID `4` trả HTTP 400 `INVALID_REQUEST`. Khi nhận reading của sensor `Độ sáng (lux)`, backend tự gửi `{"deviceId":4,"command":"ON"}` tới `control_device` nếu giá trị **lớn hơn hoặc bằng `4000`** và chưa bật cảnh báo. Chỉ gửi `{"deviceId":4,"command":"OFF"}` nếu giá trị nhỏ hơn `4000` và trước đó đã gửi `ON` thành công. Bình thường dưới ngưỡng không gửi lệnh. Ngưỡng áp dụng trên giá trị đã chuyển đổi `4095 - light` (giống giá trị lưu trong database và hiển thị trên dashboard); payload dạng `sensorId`/`value` dùng trực tiếp `value`.
+
+Database cần có thiết bị ID `4`. ESP32 cần xử lý `ON` của LED 4 là bắt đầu nhấp nháy liên tục, `OFF` là dừng nháy và tắt LED; trả `{"deviceId":4,"status":"ON"}` hoặc `OFF` vào topic `status` theo trạng thái cảnh báo (không theo từng nhịp sáng/tắt của LED).
+
+Thống kê cảnh báo: `GET /api/dashboard/alert-statistics?month=2026-10` (cần đăng nhập) trả `month`, `totalOn`, `totalOff`, `days` gồm `{date,onCount,offCount}` cho tất cả ngày của tháng, kể cả ngày không có sự kiện. Mỗi ACK LED 4 chuyển trạng thái khác trạng thái đã lưu tạo một dòng trong bảng `alert_history`, cùng transaction và khóa thiết bị với cập nhật `devices.status`; ACK trùng không tăng số lần. Thời gian ghi nhận theo giờ local của backend, giữ nguyên khi nhóm ngày trong SQL. Dữ liệu tồn tại qua restart; không có dữ liệu cũ trước khi tính năng được áp dụng. `ddl-auto: update` tự tạo bảng khi khởi động backend, không cần chạy lại `dataseed.sql` trên database hiện có.
+
+Đồng thời mỗi lần LED 4 đổi trạng thái được xác nhận sẽ lưu một dòng `action_history` với action/status `ON` hoặc `OFF`. Tài khoản tự động `iot-system` (tên hiển thị **Hệ thống**) được tạo khi cần, có mật khẩu ngẫu nhiên được băm bằng password encoder hiện tại; không gán thao tác tự động cho admin đang đăng nhập. API `/api/action-history` trả các dòng này như lịch sử thiết bị khác; WebSocket `/topic/status` thông báo sau commit để frontend tải lại Action History. Không tạo dòng khi ACK trùng hoặc chỉ mới publish mà chưa nhận xác nhận. Không tự bổ sung các đợt cũ vào Action History.
+
+Mỗi reading ánh sáng được kiểm tra ngay; backend chỉ publish khi trạng thái cảnh báo cần thay đổi: `cao, cao, cao → ON` một lần; sau đó `thấp, thấp → OFF` một lần; cao trở lại mới gửi `ON` của đợt tiếp theo. Khi backend khởi động, trạng thái theo dõi ban đầu là `OFF`, nên reading dưới ngưỡng không gửi gì. Trạng thái chống gửi trùng lưu trong bộ nhớ, không phải bộ đếm lưu DB. Nếu publish ném lỗi, backend ghi log và thử lại ở reading tiếp theo. Hàm publish dùng trong callback không gọi `waitForCompletion` để tránh chặn luồng MQTT; gửi thành công ở đây nghĩa là lệnh đã được Paho tiếp nhận, chưa phải xác nhận của ESP32. Chức năng chỉ chạy khi MQTT bật. Lệnh tự động gửi trực tiếp qua MQTT; lịch sử, thống kê và trạng thái thiết bị được cập nhật khi nhận ACK chuyển trạng thái từ ESP32.
 
 Khi MQTT bật, lệnh điều khiển có trạng thái `LOADING`. Nếu không nhận phản hồi trong 30 giây, lịch sử chuyển thành `FAILED`.
 

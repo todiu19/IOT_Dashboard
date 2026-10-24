@@ -34,6 +34,7 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
   const [view, setView] = useState("dashboard");
   const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
+  const [alertRefresh, setAlertRefresh] = useState(0);
   const [profile, setProfile] = useState(null);
   const [pendingDeviceIds, setPendingDeviceIds] = useState(new Set());
   const pendingDeviceRef = useRef(new Set());
@@ -46,6 +47,7 @@ export default function App() {
   const sessionGeneration = useRef(0);
 
   const [sensorFilters, setSensorFilters] = useState({ search: "", sensor: "", date: "" });
+  const [sensorSearch, setSensorSearch] = useState("");
   const [sensorFilterMode, setSensorFilterMode] = useState("");
   const [sensorPage, setSensorPage] = useState(1);
   const [sensorSize, setSensorSize] = useState(20);
@@ -176,6 +178,9 @@ export default function App() {
         if (!active) return;
         try {
           const device = JSON.parse(body);
+          if (device.id === 4 && confirmedDevicesRef.current.get(device.id)?.status !== device.status) {
+            setAlertRefresh((value) => value + 1);
+          }
           controlRevision.current++;
           confirmedDevicesRef.current.set(device.id, { status: device.status, revision: controlRevision.current });
           setDashboard((current) => ({
@@ -196,6 +201,7 @@ export default function App() {
       });
       // Đồng bộ lại sau reconnect để không bỏ lỡ kết quả khi socket bị ngắt.
       loadDashboard();
+      setAlertRefresh((value) => value + 1);
       setHistoryRefresh((number) => number + 1);
     };
     client.onStompError = (frame) => console.error("STOMP error:", frame.headers.message || frame.body);
@@ -208,7 +214,7 @@ export default function App() {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const time = sensorFilterMode === "time" ? normalizeTimePrefix(sensorFilters.date) : "";
+        const time = normalizeTimePrefix(sensorFilters.date);
         if (time === null) {
           setSensorError("Nhập theo thứ tự YYYY-MM-DD HH:mm:ss; có thể dừng ở bất kỳ vị trí nào.");
           return;
@@ -228,7 +234,7 @@ export default function App() {
       }
     }, sensorFilters.search || sensorFilters.date ? 300 : 0);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [user, view, sensorPage, sensorSize, sensorFilters, sensorFilterMode, sensorRefresh]);
+  }, [user, view, sensorPage, sensorSize, sensorFilters, sensorRefresh]);
 
   useEffect(() => {
     if (!user || view !== "history") return undefined;
@@ -305,6 +311,7 @@ export default function App() {
     setSensorResult(EMPTY_PAGE);
     setHistoryResult(EMPTY_PAGE);
     setSensorFilters({ search: "", sensor: "", date: "" });
+    setSensorSearch("");
     setSensorFilterMode("");
     setHistoryFilters({ deviceId: "", action: "", status: "", date: "" });
     setSensorPage(1);
@@ -351,17 +358,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function changeSensorFilter(key, value) {
+  function applySensorFilters(value = sensorSearch) {
     setSensorPage(1);
-    setSensorFilters((current) => ({ ...current, [key]: value }));
+    setSensorFilters(sensorFilterMode === "time"
+      ? { search: "", sensor: "", date: value }
+      : { search: value, sensor: sensorFilterMode, date: "" });
+  }
+
+  function changeSensorSearch(value) {
+    setSensorSearch(value);
+    applySensorFilters(value);
   }
 
   function changeSensorFilterMode(mode) {
-    setSensorPage(1);
+    // Chỉ chọn phạm vi; giữ kết quả hiện tại đến khi nhập hoặc bấm tìm kiếm.
     setSensorFilterMode(mode);
-    setSensorFilters((current) => mode === "time"
-      ? { ...current, search: "", sensor: "" }
-      : { ...current, sensor: mode, date: "" });
   }
 
   function changeHistoryFilter(key, value) {
@@ -393,13 +404,13 @@ export default function App() {
         <button className="logout-button" type="button" onClick={handleLogout}><i className="fa-solid fa-right-from-bracket" /><span>Đăng xuất</span></button>
       </aside>
       <main className="main">
-        {view === "dashboard" && <DashboardPage dashboard={dashboard} pendingDeviceIds={pendingDeviceIds} controlErrors={controlErrors} onControlDevice={handleControlDevice} />}
+        {view === "dashboard" && <DashboardPage dashboard={dashboard} pendingDeviceIds={pendingDeviceIds} controlErrors={controlErrors} onControlDevice={handleControlDevice} alertRefresh={alertRefresh} />}
         {view === "sensors" && <DataSensorPage
-          filters={sensorFilters}
+          search={sensorSearch}
           filterMode={sensorFilterMode}
-          onFilterChange={changeSensorFilter}
+          onSearchChange={changeSensorSearch}
           onFilterModeChange={changeSensorFilterMode}
-          onRefresh={() => setSensorRefresh((number) => number + 1)}  //tăng khi ấn enter/timkiem để call api
+          onRefresh={() => { applySensorFilters(); setSensorRefresh((number) => number + 1); }}
           result={sensorResult}
           error={sensorError}
           page={sensorPage}
