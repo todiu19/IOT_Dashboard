@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./LoginScreen.css";
 
 export default function LoginScreen({ onLogin, error, loading }) {
   const [username, setUsername] = useState("admin");

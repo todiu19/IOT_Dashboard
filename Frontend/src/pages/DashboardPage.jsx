@@ -1,5 +1,6 @@
 import SensorChart, { sensorKind } from "../components/SensorChart.jsx";
 import AlertStatisticsChart from "../components/AlertStatisticsChart.jsx";
+import "./DashboardPage.css";
 
 const METRIC_CONFIG = [
   { kind: "temperature", label: "Nhiệt độ", unit: "°C", icon: "fa-temperature-half" },

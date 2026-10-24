@@ -1,5 +1,6 @@
 import TableFooter from "../components/TableFooter.jsx";
 import CopyableDateTime from "../components/CopyableDateTime.jsx";
+import "./DataSensorPage.css";
 
 export default function DataSensorPage({ search, filterMode, onSearchChange, onFilterModeChange, onRefresh, result, error, page, size, onPageChange, onSizeChange }) {
   const rows = result.content || [];

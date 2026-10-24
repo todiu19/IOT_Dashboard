@@ -1,0 +1,48 @@
+/* ===========================
+   ProfilePage
+   =========================== */
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 30px;
+  width: calc(100% - 117px);
+  min-height: 477px;
+  padding: 49px 36px 42px;
+}
+.profile-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 14px;
+  text-align: center;
+}
+.profile-avatar {
+  display: grid;
+  width: 103px;
+  height: 103px;
+  margin-bottom: 17px;
+  border-radius: 50%;
+  background: #1c2b3f;
+  color: #eef3f8;
+  place-items: center;
+}
+.profile-avatar > i { font-size: 58px; }
+.profile-aside h2 { margin: 0; font-size: 15px; }
+.profile-row {
+  display: grid;
+  grid-template-columns: 97px minmax(0, 1fr);
+  min-height: 58px;
+  align-items: center;
+  border-bottom: 1px solid #2b3a4d;
+  color: #c2c9d1;
+  font-size: 11px;
+}
+.profile-row strong { color: #f0f2f5; }
+.profile-row a {
+  overflow: hidden;
+  color: #267fe4;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

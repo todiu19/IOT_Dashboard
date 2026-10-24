@@ -1,4 +1,5 @@
 import Pagination from "./Pagination.jsx";
+import "./TableFooter.css";
 
 const PAGE_SIZES = [5, 10, 15, 20, 30, 40, 50];
 

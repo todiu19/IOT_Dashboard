@@ -1,0 +1,16 @@
+/* ===========================
+   TableFooter Component
+   (wraps Pagination + page-size selector)
+   =========================== */
+
+.table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 51px;
+  padding: 7px 20px 13px;
+}
+.page-size { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-size: 10px; }
+.page-size-select { width: 70px; height: 30px; padding: 0 8px; font-size: 10px; }

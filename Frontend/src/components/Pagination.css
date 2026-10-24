@@ -1,0 +1,21 @@
+/* ===========================
+   Pagination Component
+   =========================== */
+
+.pagination { display: flex; gap: 7px; }
+.pagination-item { display: inline-flex; align-items: center; gap: 7px; }
+.pagination-ellipsis { color: var(--muted); }
+.page-button {
+  display: grid;
+  min-width: 25px;
+  height: 27px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: #6e7979;
+  color: #fff;
+  font-size: 10px;
+  place-items: center;
+}
+.page-button.active { background: var(--green); }
+.page-button:disabled { opacity: .65; }

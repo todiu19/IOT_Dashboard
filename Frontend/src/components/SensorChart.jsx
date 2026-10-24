@@ -1,4 +1,5 @@
 import { chartScale, createChartData, createTimeTicks } from "../utils/chart.js";
+import "./SensorChart.css";
 
 export { sensorKind, formatDateTime } from "../utils/chart.js";
 

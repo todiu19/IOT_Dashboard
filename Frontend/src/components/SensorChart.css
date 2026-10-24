@@ -1,0 +1,69 @@
+/* ===========================
+   SensorChart Component
+   (SVG line chart for temperature / humidity / light)
+   =========================== */
+
+.chart-card { min-width: 0; }
+.chart-wrap { padding: 0 20px 16px; }
+
+/* Legend */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 64px;
+  margin-top: 14px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+.legend-line { width: 20px; height: 3px; background: currentColor; }
+.legend-temperature { color: var(--red); }
+.legend-humidity { color: var(--blue); }
+.legend-light { color: var(--yellow); }
+
+/* SVG chart */
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 14px;
+  overflow: visible;
+}
+.chart-svg text { fill: var(--muted); font: 10px Arial, Helvetica, sans-serif; }
+.chart-svg .chart-axis { font-size: 11px; }
+.chart-svg .axis-temperature { fill: var(--red); }
+.chart-svg .axis-humidity { fill: var(--blue); }
+.chart-svg .chart-empty { font-size: 13px; }
+.chart-svg .grid { stroke: var(--line); stroke-width: 1; }
+.chart-svg .line {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.temperature-line { stroke: var(--red); }
+.humidity-line { stroke: var(--blue); }
+.light-line { stroke: var(--yellow); }
+
+/* Data points */
+.chart-point { opacity: 0; transition: opacity .15s ease; }
+.chart-point:hover, .chart-point.is-single { opacity: 1; }
+.point-temperature { fill: var(--red); }
+.point-humidity { fill: var(--blue); }
+.point-light { fill: var(--yellow); }
+
+.chart-date { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 16px; }
+
+@media (max-width: 480px) {
+  .chart-wrap { padding: 0 12px 14px; }
+  .legend-item { font-size: 11px; }
+}
+@media (max-width: 1200px) {
+  .chart-legend { column-gap: 24px; }
+}

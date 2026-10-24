@@ -1,3 +1,5 @@
+import "./Pagination.css";
+
 export default function Pagination({ page, totalPages, onPageChange }) {
   const count = Math.max(1, totalPages);
   const visiblePages = [];

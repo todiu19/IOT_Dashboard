@@ -1,3 +1,5 @@
+import "./ProfilePage.css";
+
 function safeUrl(value) {
   if (!value) return null;
   try {

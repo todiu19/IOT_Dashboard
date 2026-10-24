@@ -9,6 +9,7 @@ import ActionHistoryPage from "./pages/ActionHistoryPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import { normalizeTimePrefix } from "./utils/date.js";
 import { mergeControlStatus } from "./utils/controlStatus.js";
+import "./App.css";
 
 const EMPTY_DASHBOARD = { latestReadings: [], chartData: [], devices: [] };
 const EMPTY_PAGE = { content: [], totalPages: 1 };

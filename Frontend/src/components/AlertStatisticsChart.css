@@ -1,0 +1,22 @@
+/* ===========================
+   AlertStatisticsChart Component
+   (SVG bar chart for alert statistics by month)
+   =========================== */
+
+.alert-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.alert-month-field { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
+.alert-month-field .control { width: 168px; height: 36px; font-size: 12px; }
+.alert-chart-totals { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 22px; }
+.alert-chart-totals strong { font-size: 23px; margin: 0 4px; }
+.alert-total-on { color: #ff7373; }
+.alert-bar-on { fill: #ff7373; }
+.alert-chart-scroll { overflow-x: auto; }
+.alert-statistics-svg { min-width: 540px; }
+.alert-statistics-svg g:focus { outline: 1px solid var(--yellow); }
+.alert-chart-message { margin: 24px 0; color: var(--muted); line-height: 1.5; }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API, apiFetch } from "../api.js";
+import "./AlertStatisticsChart.css";
 
 function currentMonth() {
   const now = new Date();

@@ -1,4 +1,5 @@
 import { formatDateTime } from "../utils/chart.js";
+import "./CopyableDateTime.css";
 
 function fallbackCopy(text) {
   const textarea = document.createElement("textarea");

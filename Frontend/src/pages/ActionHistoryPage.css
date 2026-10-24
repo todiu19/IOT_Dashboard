@@ -1,0 +1,9 @@
+/* ===========================
+   ActionHistoryPage
+   (overrides filter grid columns for 5-column layout)
+   =========================== */
+
+#historyFilters {
+  grid-template-columns: 160px 160px 130px 150px max-content;
+  gap: 16px;
+}

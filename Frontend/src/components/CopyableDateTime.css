@@ -1,0 +1,18 @@
+/* ===========================
+   CopyableDateTime Component
+   =========================== */
+
+.copyable-time { display: inline-flex; align-items: center; gap: 7px; }
+.copyable-time time { font-variant-numeric: tabular-nums; }
+.copy-time-button {
+  display: inline-grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #7f8c9e;
+}
+.copy-time-button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }

@@ -1,5 +1,6 @@
 import TableFooter from "../components/TableFooter.jsx";
 import CopyableDateTime from "../components/CopyableDateTime.jsx";
+import "./ActionHistoryPage.css";
 
 export default function ActionHistoryPage({ filters, devices, onFilterChange, onRefresh, result, error, page, size, onPageChange, onSizeChange }) {
   const rows = result.content || [];
