@@ -57,4 +57,11 @@ class SensorSearchTests {
         assertEquals(0, service.search("2026-10", "Nhiệt độ (°C)", null, 0, 20).totalElements());
         assertEquals(1, service.search(null, null, "2026-10", 0, 20).totalElements());
     }
+
+    @Test
+    void twoParameterSearchWithModeWorksSeamlessly() {
+        assertEquals(2, service.search("2026", null, 0, 20).totalElements());
+        assertEquals(1, service.search("2026-10", "time", 0, 20).totalElements());
+        assertEquals(1, service.search(null, "Nhiệt độ (°C)", 0, 20).totalElements());
+    }
 }

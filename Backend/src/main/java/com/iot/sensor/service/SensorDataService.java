@@ -43,6 +43,26 @@ public class SensorDataService {
     @Transactional(readOnly = true)
     public PageResponse<ReadingResponse> search(
             String search,
+            String mode,
+            int page,
+            int size
+    ) {
+        String sensor = null;
+        String time = null;
+        if (mode != null && !mode.isBlank()) {
+            if ("time".equalsIgnoreCase(mode.trim())) {
+                time = search;
+                search = null;
+            } else if (!"all".equalsIgnoreCase(mode.trim())) {
+                sensor = mode.trim();
+            }
+        }
+        return search(search, sensor, time, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ReadingResponse> search(
+            String search,
             String sensorName,
             String time,
             int page,

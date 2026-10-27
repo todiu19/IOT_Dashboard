@@ -70,10 +70,12 @@ export default function DashboardPage({ dashboard, pendingDeviceIds, controlErro
                   {isAlert && <span className="device-alert-status" role="status">
                     {isAlertActive ? "Đang cảnh báo" : "Không có cảnh báo"}
                   </span>}
+
                   {!isAlert && (pendingDeviceIds.has(device.id)
                     ? <span className="device-control-status" role="status">LOADING — đang chờ phản hồi</span>
                     : controlErrors[device.id] && <span className="device-control-status is-failed" role="alert">FAILED — {controlErrors[device.id]}</span>)}
                 </div>
+
                 {!isAlert && <button
                   className="switch"
                   type="button"

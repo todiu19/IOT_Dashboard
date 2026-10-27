@@ -19,50 +19,57 @@ const NAV_ITEMS = [
   { view: "history", label: "Action History", icon: "fa-clock-rotate-left" },
   { view: "profile", label: "Profile", icon: "fa-user" }
 ];
-
+// hamf dung de tạo tham số URL
 function pageQuery(page, size, filters) {
   const params = new URLSearchParams({ page: String(page - 1), size: String(size) });
   Object.entries(filters).forEach(([key, value]) => {
     if (String(value).trim()) params.set(key, String(value).trim());
   });
   return params.toString();
+  //vidu: page=1&size=20&search=&sensor=&date=2023-12-25T10:30:00
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [checkingSession, setCheckingSession] = useState(true);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState("");
-  const [view, setView] = useState("dashboard");
-  const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
-  const [alertRefresh, setAlertRefresh] = useState(0);
-  const [profile, setProfile] = useState(null);
-  const [pendingDeviceIds, setPendingDeviceIds] = useState(new Set());
-  const pendingDeviceRef = useRef(new Set());
-  const pendingRequestRef = useRef(new Set());
-  const controlStatesRef = useRef(new Map());
-  const confirmedDevicesRef = useRef(new Map());
-  const controlRevision = useRef(0);
-  const [controlErrors, setControlErrors] = useState({});
-  const dashboardRequest = useRef(0);
-  const sessionGeneration = useRef(0);
+  // XÁC THỰC & ĐIỀU HƯỚNG GIAO DIỆN
+  const [user, setUser] = useState(null); // Thông tin tài khoản đăng nhập hiện tại (null nếu chưa đăng nhập)
+  const [checkingSession, setCheckingSession] = useState(true); // Trạng thái đang kiểm tra phiên đăng nhập cũ lúc khởi động app
+  const [loginLoading, setLoginLoading] = useState(false); // Trạng thái đang chờ gọi API đăng nhập (hiển thị loading trên nút)
+  const [loginError, setLoginError] = useState(""); // Thông báo lỗi khi đăng nhập thất bại
+  const [view, setView] = useState("dashboard"); // Tab màn hình hiện tại ("dashboard" | "sensors" | "history" | "profile")
+  const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD); // Dữ liệu trang chủ: số đo cảm biến mới nhất, mảng vẽ biểu đồ, danh sách thiết bị
+  const [alertRefresh, setAlertRefresh] = useState(0); // Số đếm tăng dần (+1) để kích hoạt vẽ lại biểu đồ thống kê cảnh báo
+  const [profile, setProfile] = useState(null); // Dữ liệu thông tin cá nhân chi tiết (mã sinh viên, email, liên kết mạng xã hội...)
 
-  const [sensorFilters, setSensorFilters] = useState({ search: "", sensor: "", date: "" });
-  const [sensorSearch, setSensorSearch] = useState("");
-  const [sensorFilterMode, setSensorFilterMode] = useState("");
-  const [sensorPage, setSensorPage] = useState(1);
-  const [sensorSize, setSensorSize] = useState(20);
-  const [sensorResult, setSensorResult] = useState(EMPTY_PAGE);
-  const [sensorRefresh, setSensorRefresh] = useState(0);
-  const [sensorError, setSensorError] = useState("");
+  // ĐIỀU KHIỂN THIẾT BỊ & XỬ LÝ ĐỒNG BỘ NGẦM
+  const [pendingDeviceIds, setPendingDeviceIds] = useState(new Set()); // Tập hợp ID các thiết bị đang chờ phản hồi từ phần cứng (hiện spinner xoay)
+  const pendingDeviceRef = useRef(new Set()); // Lưu ngầm danh sách ID thiết bị đang chờ (tránh lỗi bất đồng bộ stale closure)
+  const pendingRequestRef = useRef(new Set()); // Lưu ngầm các request API bật/tắt thiết bị đang gửi qua mạng
+  const controlStatesRef = useRef(new Map()); // Lưu ngầm trạng thái điều khiển chi tiết của từng thiết bị (LOADING, ON, OFF, FAILED)
+  const confirmedDevicesRef = useRef(new Map()); // Lưu trạng thái thiết bị đã được server xác nhận thành công kèm số phiên bản
+  const controlRevision = useRef(0); // Đánh số phiên bản lệnh điều khiển (tránh việc dữ liệu cũ đè lên dữ liệu mới hơn)
+  const [controlErrors, setControlErrors] = useState({}); // Lưu câu thông báo lỗi cho từng thiết bị nếu gửi lệnh thất bại
+  const dashboardRequest = useRef(0); // Đếm số thứ tự request gọi API dashboard (chống lỗi tranh chấp Race Condition khi mạng chậm)
+  const sessionGeneration = useRef(0); // Đánh dấu thế hệ phiên đăng nhập (bỏ qua các phản hồi mạng của phiên cũ sau khi logout)
 
-  const [historyFilters, setHistoryFilters] = useState({ deviceId: "", action: "", status: "", date: "" });
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historySize, setHistorySize] = useState(20);
-  const [historyResult, setHistoryResult] = useState(EMPTY_PAGE);
-  const [historyRefresh, setHistoryRefresh] = useState(0);
-  const [historyError, setHistoryError] = useState("");
+  // BẢNG DỮ LIỆU CẢM BIẾN (DATA SENSOR)
+  const [sensorFilters, setSensorFilters] = useState({ search: "", mode: "" }); // Bộ lọc chính thức gửi lên API (từ khóa search và chế độ lọc mode)
+  const [sensorSearch, setSensorSearch] = useState(""); // Giá trị người dùng đang nhập trong ô tìm kiếm cảm biến
+  const [sensorFilterMode, setSensorFilterMode] = useState(""); // Chế độ lọc đang chọn trong dropdown (Tất cả, Nhiệt độ, Độ ẩm, Độ sáng, Theo thời gian)
+  const [sensorPage, setSensorPage] = useState(1); // Trang hiện tại của bảng cảm biến (mặc định trang 1)
+  const [sensorSize, setSensorSize] = useState(20); // Số dòng hiển thị trên mỗi trang bảng cảm biến (mặc định 20 dòng)
+  const [sensorResult, setSensorResult] = useState(EMPTY_PAGE); // Kết quả trả về từ API cảm biến: mảng content (các dòng dữ liệu) và totalPages
+  const [sensorRefresh, setSensorRefresh] = useState(0); // Số đếm tăng dần (+1) để kích hoạt tải lại bảng cảm biến khi bấm nút Tìm kiếm
+  const [sensorError, setSensorError] = useState(""); // Thông báo lỗi nếu gọi API bảng cảm biến thất bại
 
+  // BẢNG LỊCH SỬ THAO TÁC (ACTION HISTORY)     
+  const [historyFilters, setHistoryFilters] = useState({ deviceId: "", action: "", status: "", date: "" }); // Bộ lọc lịch sử: thiết bị, hành động, trạng thái, thời gian
+  const [historyPage, setHistoryPage] = useState(1); // Trang hiện tại của bảng lịch sử (mặc định trang 1)
+  const [historySize, setHistorySize] = useState(20); // Số dòng hiển thị trên mỗi trang bảng lịch sử (mặc định 20 dòng)
+  const [historyResult, setHistoryResult] = useState(EMPTY_PAGE); // Kết quả trả về từ API lịch sử: mảng content và totalPages
+  const [historyRefresh, setHistoryRefresh] = useState(0); // Số đếm tăng dần (+1) để kích hoạt tải lại bảng lịch sử
+  const [historyError, setHistoryError] = useState(""); // Thông báo lỗi nếu gọi API bảng lịch sử thất bại
+
+  // Tự động kiểm tra và khôi phục phiên đăng nhập cũ (nếu có cookie/session) khi vừa mở trang hoặc F5
   useEffect(() => {
     let active = true;
     async function restoreSession() {
@@ -85,6 +92,7 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
+  // Cập nhật trạng thái điều khiển thiết bị (LOADING -> ON/OFF/FAILED) vào bộ nhớ ngầm và giao diện
   const applyControlStatus = useCallback((response) => {
     const next = mergeControlStatus(controlStatesRef.current, response);
     if (next === controlStatesRef.current) return;
@@ -109,6 +117,7 @@ export default function App() {
     setHistoryRefresh((number) => number + 1);
   }, []);
 
+  // Tải toàn bộ dữ liệu trang chủ Dashboard (chỉ số cảm biến mới nhất, dữ liệu biểu đồ, danh sách thiết bị)
   const loadDashboard = useCallback(async () => {
     const request = ++dashboardRequest.current;
     const revision = controlRevision.current;
@@ -143,21 +152,24 @@ export default function App() {
     }
   }, []);
 
+  // Effect 2: Tự động tải dữ liệu Dashboard lần đầu tiên ngay sau khi người dùng đăng nhập thành công
   useEffect(() => {
     if (!user) return undefined;
     loadDashboard();
     return () => { dashboardRequest.current++; };
   }, [user, loadDashboard]);
 
+  // Effect 3: Thiết lập kết nối thời gian thực WebSocket (STOMP) để nhận dữ liệu cảm biến và thiết bị tức thì
   useEffect(() => {
     if (!user) return undefined;
     let active = true;
-    const client = new Client({ brokerURL: getWebSocketUrl(), reconnectDelay: 5000, debug: () => {} });
+    const client = new Client({ brokerURL: getWebSocketUrl(), reconnectDelay: 5000, debug: () => { } });
     client.onConnect = () => {
       if (!active) {
         void client.deactivate();
         return;
       }
+      // Đăng ký nhận dữ liệu số đo cảm biến mới từ topic /topic/sensors
       client.subscribe("/topic/sensors", ({ body }) => {
         if (!active) return;
         try {
@@ -170,11 +182,11 @@ export default function App() {
               chartData: [...current.chartData, reading].slice(-50)
             }));
           }
-          // setSensorRefresh((number) => number + 1); 
         } catch (error) {
           console.error("Sensor WS payload không hợp lệ:", error);
         }
       });
+      // Đăng ký nhận trạng thái cập nhật thiết bị (bật/tắt) từ topic /topic/devices
       client.subscribe("/topic/devices", ({ body }) => {
         if (!active) return;
         try {
@@ -192,6 +204,7 @@ export default function App() {
           console.error("Status WS payload không hợp lệ:", error);
         }
       });
+      // Đăng ký nhận trạng thái phản hồi lệnh điều khiển từ topic /topic/status
       client.subscribe("/topic/status", ({ body }) => {
         if (!active) return;
         try {
@@ -200,7 +213,7 @@ export default function App() {
           console.error("Control status WS payload không hợp lệ:", error);
         }
       });
-      // Đồng bộ lại sau reconnect để không bỏ lỡ kết quả khi socket bị ngắt.
+      // Đồng bộ lại dữ liệu sau khi kết nối lại (reconnect) để không bỏ lỡ thông tin khi mất mạng tạm thời
       loadDashboard();
       setAlertRefresh((value) => value + 1);
       setHistoryRefresh((number) => number + 1);
@@ -210,18 +223,25 @@ export default function App() {
     return () => { active = false; void client.deactivate(); };
   }, [user, applyControlStatus, loadDashboard]);
 
+  // Effect 4: Gọi API tải dữ liệu bảng cảm biến (/api/data-sensor) mỗi khi chuyển trang, đổi số dòng hoặc thay đổi bộ lọc tìm kiếm
   useEffect(() => {
     if (!user || view !== "sensors") return undefined;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const time = normalizeTimePrefix(sensorFilters.date);
-        if (time === null) {
-          setSensorError("Nhập theo thứ tự YYYY-MM-DD HH:mm:ss; có thể dừng ở bất kỳ vị trí nào.");
-          return;
+        let queryFilters;
+        if (sensorFilters.mode === "time") {
+          const time = normalizeTimePrefix(sensorFilters.search);
+          if (time === null) {
+            setSensorError("Nhập theo thứ tự YYYY-MM-DD HH:mm:ss; có thể dừng ở bất kỳ vị trí nào.");
+            return;
+          }
+          setSensorError("");
+          queryFilters = { search: time, mode: "time" };
+        } else {
+          setSensorError("");
+          queryFilters = { search: sensorFilters.search, mode: sensorFilters.mode };
         }
-        setSensorError("");
-        const queryFilters = { search: sensorFilters.search, sensor: sensorFilters.sensor, time };
         const data = await apiFetch(`${API.sensors}?${pageQuery(sensorPage, sensorSize, queryFilters)}`, { signal: controller.signal });
         if (controller.signal.aborted) return;
         const totalPages = Math.max(1, Number(data?.totalPages) || 0);
@@ -233,10 +253,11 @@ export default function App() {
       } catch (error) {
         if (error.name !== "AbortError" && !controller.signal.aborted) setSensorError(error.message);
       }
-    }, sensorFilters.search || sensorFilters.date ? 300 : 0);
+    }, sensorFilters.search ? 300 : 0);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [user, view, sensorPage, sensorSize, sensorFilters, sensorRefresh]);
 
+  // Effect 5: Gọi API tải dữ liệu bảng lịch sử thao tác (/api/history) mỗi khi đổi trang hoặc thay đổi bộ lọc
   useEffect(() => {
     if (!user || view !== "history") return undefined;
     const controller = new AbortController();
@@ -264,6 +285,7 @@ export default function App() {
     return () => { clearTimeout(timer); controller.abort(); };
   }, [user, view, historyPage, historySize, historyFilters, historyRefresh]);
 
+  // Effect 6: Tải dữ liệu thông tin cá nhân (/api/profile) khi người dùng mở tab "Profile"
   useEffect(() => {
     if (!user || view !== "profile" || profile?.id === user.id) return undefined;
     const controller = new AbortController();
@@ -273,6 +295,7 @@ export default function App() {
     return () => controller.abort();
   }, [user, view, profile]);
 
+  // Hàm: Xử lý đăng nhập tài khoản bằng username và password
   async function handleLogin(username, password) {
     setLoginLoading(true);
     setLoginError("");
@@ -290,6 +313,7 @@ export default function App() {
     }
   }
 
+  // Hàm: Xử lý đăng xuất, gọi API hủy phiên và xóa sạch toàn bộ State trong RAM về mặc định
   async function handleLogout() {
     try {
       await apiFetch(API.logout, { method: "POST" });
@@ -323,6 +347,7 @@ export default function App() {
     setView("dashboard");
   }
 
+  // Hàm: Xử lý khi người dùng bấm công tắc bật/tắt một thiết bị
   async function handleControlDevice(device) {
     if (pendingDeviceRef.current.has(device.id)) return;
     const generation = sessionGeneration.current;
@@ -353,29 +378,32 @@ export default function App() {
     }
   }
 
+  // Hàm: Chuyển đổi qua lại giữa các tab màn hình (Dashboard, Sensors, History, Profile)
   function selectView(nextView) {
     if (nextView === "dashboard" && view !== "dashboard") loadDashboard();
     setView(nextView);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  // Hàm: Thiết lập bộ lọc tìm kiếm cho bảng cảm biến và tự động quay về trang 1
   function applySensorFilters(value = sensorSearch) {
     setSensorPage(1);
-    setSensorFilters(sensorFilterMode === "time"
-      ? { search: "", sensor: "", date: value }
-      : { search: value, sensor: sensorFilterMode, date: "" });
+    setSensorFilters({ search: value, mode: sensorFilterMode });
   }
 
+  // Hàm: Cập nhật giá trị khi người dùng gõ vào ô tìm kiếm bảng cảm biến
   function changeSensorSearch(value) {
     setSensorSearch(value);
     applySensorFilters(value);
   }
 
+  // Hàm: Cập nhật chế độ lọc cảm biến khi người dùng chọn trong menu dropdown
   function changeSensorFilterMode(mode) {
     // Chỉ chọn phạm vi; giữ kết quả hiện tại đến khi nhập hoặc bấm tìm kiếm.
     setSensorFilterMode(mode);
   }
 
+  // Hàm: Cập nhật tiêu chí lọc của bảng lịch sử thao tác (thiết bị, hành động, trạng thái, ngày)
   function changeHistoryFilter(key, value) {
     setHistoryPage(1);
     setHistoryFilters((current) => ({ ...current, [key]: value }));

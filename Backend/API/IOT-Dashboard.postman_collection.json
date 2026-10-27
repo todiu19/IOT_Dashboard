@@ -232,18 +232,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/data-sensor?page={{page}}&size={{size}}&search={{sensorSearch}}&sensor={{sensor}}&time={{time}}",
+              "raw": "{{baseUrl}}/api/data-sensor?page={{page}}&size={{size}}&search={{sensorSearch}}&mode={{mode}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data-sensor"],
               "query": [
                 { "key": "page", "value": "{{page}}", "description": "Trang bắt đầu từ 0" },
                 { "key": "size", "value": "{{size}}", "description": "Số bản ghi mỗi trang, tối đa 100" },
-                { "key": "search", "value": "{{sensorSearch}}", "description": "Tên sensor gần đúng, giá trị số chính xác hoặc tiền tố thời gian YYYY-MM-DD HH:mm:ss", "disabled": true },
-                { "key": "sensor", "value": "{{sensor}}", "description": "Tên sensor chính xác", "disabled": true },
-                { "key": "time", "value": "{{time}}", "description": "Prefix từ YYYY đến YYYY-MM-DD HH:mm:ss", "disabled": true }
+                { "key": "search", "value": "{{sensorSearch}}", "description": "Từ khóa tìm kiếm hoặc thời gian YYYY-MM-DD HH:mm:ss", "disabled": true },
+                { "key": "mode", "value": "{{mode}}", "description": "Chế độ lọc: 'time', tên sensor ('Nhiệt độ (°C)'), hoặc để trống/'all'", "disabled": true }
               ]
             },
-            "description": "Tìm kiếm và phân trang reading. Có thể bật các query `search`, `sensor`, `time` trong tab Params khi cần."
+            "description": "Tìm kiếm và phân trang reading. Sử dụng 2 tham số `search` (từ khóa hoặc thời gian) và `mode` ('all', 'time', hoặc tên cảm biến) trong tab Params."
           },
           "event": [
             {
