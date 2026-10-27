@@ -26,11 +26,12 @@
 .alert-year-select {
   width: 104px;
 }
-.alert-chart-totals { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 22px; }
-.alert-chart-totals strong { font-size: 23px; margin: 0 4px; }
-.alert-total-on { color: #ff7373; }
+.alert-chart-totals { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; }
+.alert-chart-totals strong { font-size: 20px; margin: 0 3px; }
+.alert-total-on { color: #ff7373; font-size: 13px; }
 .alert-bar-on { fill: #ff7373; }
 .alert-chart-scroll { overflow-x: auto; }
-.alert-statistics-svg { min-width: 540px; }
+.alert-statistics-svg { min-width: 500px; max-height: 200px; }
 .alert-statistics-svg g:focus { outline: 1px solid var(--yellow); }
-.alert-chart-message { margin: 24px 0; color: var(--muted); line-height: 1.5; }
+.alert-chart-message { margin: 16px 0; color: var(--muted); line-height: 1.5; font-size: 12px; }
+.chart-date { margin-top: 8px; font-size: 11px; }

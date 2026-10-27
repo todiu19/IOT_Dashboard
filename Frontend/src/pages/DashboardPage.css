@@ -50,34 +50,53 @@
 .metric-reading > i { width: 16px; font-size: 16px; text-align: center; }
 .metric-value { color: var(--metric-color); font-size: 20px; line-height: 24px; font-weight: 700; }
 
-/* ---- Chart layout ---- */
+/* ---- Dashboard main layout (Charts left, Devices right) ---- */
+.dashboard-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 285px;
+  gap: 20px;
+  align-items: start;
+}
+.dashboard-charts {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   align-items: start;
 }
-.dashboard-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
 
-/* ---- Device control panel ---- */
-.devices-card { margin-top: 28px; }
-.devices-card > .card-title { margin-bottom: 28px; }
+/* ---- Device control panel (on the right) ---- */
+.devices-card {
+  margin-top: 0;
+  padding: 0;
+}
+.devices-card > .card-title {
+  margin-top: 0;
+  margin-bottom: 18px;
+  font-size: 16px;
+  line-height: 20px;
+}
 .device-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  gap: 20px;
-  padding: 0 40px 0 16px;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 0;
 }
 .device-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
-  min-height: 84px;
-  padding: 12px;
+  min-height: 72px;
+  padding: 12px 14px;
   border-radius: 8px;
   background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 .device-item:hover { background: #1d2b3b; }
 
@@ -134,11 +153,13 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 1200px) {
-  .metrics-grid, .device-list { gap: 20px 24px; padding: 0; }
+  .metrics-grid { gap: 20px 24px; padding: 0; }
+  .dashboard-content { grid-template-columns: minmax(0, 1fr) 260px; }
 }
 @media (max-width: 1050px) {
-  .dashboard-overview { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-content { grid-template-columns: minmax(0, 1fr); }
   .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  .device-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
   .metric-value { font-size: 18px; }
 }
 @media (max-width: 760px) {

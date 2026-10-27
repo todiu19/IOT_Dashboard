@@ -30,67 +30,69 @@ export default function DashboardPage({ dashboard, pendingDeviceIds, controlErro
           </article>
         ))}
       </div>
-      <div className="dashboard-overview">
-        <div className="dashboard-grid">
-          <article className="card chart-card">
-            <header className="card-header"><h2 className="card-title">Nhiệt độ &amp; Độ ẩm</h2></header>
-            <div className="chart-wrap">
-              <div className="chart-legend">
-                <span className="legend-item legend-temperature"><i className="legend-line" />Nhiệt độ (°C)</span>
-                <span className="legend-item legend-humidity"><i className="legend-line" />Độ ẩm (%)</span>
-              </div>
-              <SensorChart readings={dashboard.chartData || []} />
-            </div>
-          </article>
-          <article className="card chart-card">
-            <header className="card-header"><h2 className="card-title">Độ sáng (lux)</h2></header>
-            <div className="chart-wrap">
-              <div className="chart-legend">
-                <span className="legend-item legend-light"><i className="legend-line" />Độ sáng (lux)</span>
-              </div>
-              <SensorChart readings={dashboard.chartData || []} variant="light" />
-            </div>
-          </article>
-        </div>
-        <AlertStatisticsChart refreshVersion={alertRefresh} />
-      </div>
-      <section className="devices-card" aria-labelledby="device-control-title">
-        <h2 className="card-title" id="device-control-title">Device Control</h2>
-        <div className="device-list">
-          {(dashboard.devices || []).map((device) => {
-            const isAlert = device.id === 4;
-            const isAlertActive = isAlert && device.status === "ON";
-            const name = isAlert ? "Cảnh báo" : device.name;
-            return (
-              <div className={`device-item${isAlert ? " device-alert" : ""}${isAlertActive ? " is-alerting" : ""}`} key={device.id}>
-                <div className="device-label">
-                  <span className="device-name">
-                    {isAlert && <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />} {name}
-                  </span>
-                  {isAlert && <span className="device-alert-status" role="status">
-                    {isAlertActive ? "Đang cảnh báo" : "Không có cảnh báo"}
-                  </span>}
-
-                  {!isAlert && (pendingDeviceIds.has(device.id)
-                    ? <span className="device-control-status" role="status">LOADING — đang chờ phản hồi</span>
-                    : controlErrors[device.id] && <span className="device-control-status is-failed" role="alert">FAILED — {controlErrors[device.id]}</span>)}
+      <div className="dashboard-content">
+        <div className="dashboard-charts">
+          <div className="dashboard-grid">
+            <article className="card chart-card">
+              <header className="card-header"><h2 className="card-title">Nhiệt độ &amp; Độ ẩm</h2></header>
+              <div className="chart-wrap">
+                <div className="chart-legend">
+                  <span className="legend-item legend-temperature"><i className="legend-line" />Nhiệt độ (°C)</span>
+                  <span className="legend-item legend-humidity"><i className="legend-line" />Độ ẩm (%)</span>
                 </div>
-
-                {!isAlert && <button
-                  className="switch"
-                  type="button"
-                  role="switch"
-                  aria-label={`Bật tắt ${name}`}
-                  aria-checked={device.status === "ON"}
-                  disabled={pendingDeviceIds.has(device.id)}
-                  aria-busy={pendingDeviceIds.has(device.id)}
-                  onClick={() => onControlDevice(device)}
-                />}
+                <SensorChart readings={dashboard.chartData || []} />
               </div>
-            );
-          })}
+            </article>
+            <article className="card chart-card">
+              <header className="card-header"><h2 className="card-title">Độ sáng (lux)</h2></header>
+              <div className="chart-wrap">
+                <div className="chart-legend">
+                  <span className="legend-item legend-light"><i className="legend-line" />Độ sáng (lux)</span>
+                </div>
+                <SensorChart readings={dashboard.chartData || []} variant="light" />
+              </div>
+            </article>
+          </div>
+          <AlertStatisticsChart refreshVersion={alertRefresh} />
         </div>
-      </section>
+        <section className="devices-card" aria-labelledby="device-control-title">
+          <h2 className="card-title" id="device-control-title">Device Control</h2>
+          <div className="device-list">
+            {(dashboard.devices || []).map((device) => {
+              const isAlert = device.id === 4;
+              const isAlertActive = isAlert && device.status === "ON";
+              const name = isAlert ? "Cảnh báo" : device.name;
+              return (
+                <div className={`device-item${isAlert ? " device-alert" : ""}${isAlertActive ? " is-alerting" : ""}`} key={device.id}>
+                  <div className="device-label">
+                    <span className="device-name">
+                      {isAlert && <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />} {name}
+                    </span>
+                    {isAlert && <span className="device-alert-status" role="status">
+                      {isAlertActive ? "Đang cảnh báo" : "Không có cảnh báo"}
+                    </span>}
+
+                    {!isAlert && (pendingDeviceIds.has(device.id)
+                      ? <span className="device-control-status" role="status">LOADING — đang chờ phản hồi</span>
+                      : controlErrors[device.id] && <span className="device-control-status is-failed" role="alert">FAILED — {controlErrors[device.id]}</span>)}
+                  </div>
+
+                  {!isAlert && <button
+                    className="switch"
+                    type="button"
+                    role="switch"
+                    aria-label={`Bật tắt ${name}`}
+                    aria-checked={device.status === "ON"}
+                    disabled={pendingDeviceIds.has(device.id)}
+                    aria-busy={pendingDeviceIds.has(device.id)}
+                    onClick={() => onControlDevice(device)}
+                  />}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
     </section>
   );
 }

@@ -41,8 +41,8 @@ export default function AlertStatisticsChart({ refreshVersion = 0 }) {
   const days = data?.days || [];
   // Tìm giá trị lớn nhất của trục Y (làm tròn lên bội số của 4 để chia 4 vạch lưới đều đặn, tối thiểu là 4)
   const maximum = Math.max(4, Math.ceil(Math.max(0, ...days.map((day) => day.onCount)) / 4) * 4);
-  // Cấu hình khung vẽ biểu đồ bên trong SVG (lề trái, lề trên, chiều rộng, chiều cao)
-  const plot = { left: 42, top: 24, width: 654, height: 230 };
+  // Cấu hình khung vẽ biểu đồ bên trong SVG (lề trái, lề trên, chiều rộng, chiều cao - thu nhỏ gọn gàng)
+  const plot = { left: 36, top: 16, width: 660, height: 145 };
   // Bước nhảy chiều ngang giữa các cột ngày
   const step = plot.width / Math.max(1, days.length);
   // Chiều rộng thực tế của mỗi cột (chiếm 60% khoảng cách step)
@@ -119,7 +119,7 @@ export default function AlertStatisticsChart({ refreshVersion = 0 }) {
 
             {/* Vùng vẽ đồ thị cột SVG */}
             <div className="alert-chart-scroll">
-              <svg className="chart-svg alert-statistics-svg" viewBox="0 0 720 300" role="img"
+              <svg className="chart-svg alert-statistics-svg" viewBox="0 0 720 200" role="img"
                 aria-label={`Số lần bật cảnh báo theo từng ngày tháng ${month}`}>
                 <title>{`Tháng ${month}: ${data.totalOn} lần bật cảnh báo`}</title>
                 
@@ -130,7 +130,7 @@ export default function AlertStatisticsChart({ refreshVersion = 0 }) {
                   return (
                     <g key={index}>
                       <line className="grid" x1={plot.left} x2={plot.left + plot.width} y1={y} y2={y} />
-                      <text x={plot.left - 8} y={y + 4} textAnchor="end">{count}</text>
+                      <text x={plot.left - 6} y={y + 4} textAnchor="end">{count}</text>
                     </g>
                   );
                 })}
@@ -148,14 +148,14 @@ export default function AlertStatisticsChart({ refreshVersion = 0 }) {
                       {/* Cột thể hiện số lần bật cảnh báo trong ngày */}
                       <rect className="alert-bar-on" x={x - barWidth / 2} y={plot.top + plot.height - onHeight} width={barWidth} height={onHeight} rx="1" />
                       {/* Nhãn số ngày dưới chân cột (ví dụ: ngày 01 -> hiển thị 1) */}
-                      <text x={x} y={plot.top + plot.height + 18} textAnchor="middle">{Number(day.date.slice(-2))}</text>
+                      <text x={x} y={plot.top + plot.height + 15} textAnchor="middle">{Number(day.date.slice(-2))}</text>
                     </g>
                   );
                 })}
 
                 {/* Nhãn tên trục tọa độ */}
-                <text x={plot.left} y="14">Số lần</text>
-                <text x={plot.left + plot.width} y="294" textAnchor="end">Ngày trong tháng</text>
+                <text x={plot.left} y="11">Số lần</text>
+                <text x={plot.left + plot.width} y="196" textAnchor="end">Ngày trong tháng</text>
               </svg>
             </div>
 

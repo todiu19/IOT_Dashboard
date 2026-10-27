@@ -121,6 +121,7 @@ public class DeviceService {
         ActionHistory history = histories
                 .findFirstByDeviceIdAndStatusOrderByPerformedAtDesc(event.deviceId(), ActionResult.LOADING)
                 .orElse(null);
+        // check nếu deviceId là 4 và trạng thái thay đổi thì tạo lịch sử
         if (event.deviceId() == 4 && device.getStatus() != event.status()) {
             if (history == null) {
                 User system = users.findByUsername(AUTOMATION_USERNAME).orElseGet(() ->
