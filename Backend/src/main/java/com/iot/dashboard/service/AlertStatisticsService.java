@@ -4,7 +4,7 @@ import com.iot.common.dto.response.AlertStatisticsResponse;
 import com.iot.common.enums.DeviceState;
 import com.iot.common.exception.ApiException;
 import com.iot.common.exception.ErrorCode;
-import com.iot.domain.repository.AlertHistoryRepository;
+import com.iot.domain.repository.ActionHistoryRepository;
 import java.time.DateTimeException;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -13,9 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AlertStatisticsService {
-    private final AlertHistoryRepository histories;
+    private final ActionHistoryRepository histories;
 
-    public AlertStatisticsService(AlertHistoryRepository histories) {
+    public AlertStatisticsService(ActionHistoryRepository histories) {
         this.histories = histories;
     }
 
@@ -31,10 +31,12 @@ public class AlertStatisticsService {
         }
         long[] on = new long[month.lengthOfMonth() + 1];
         long[] off = new long[month.lengthOfMonth() + 1];
-        for (var count : histories.countByDay(month.atDay(1).atStartOfDay(),
+        for (var count : histories.countAlertsByDay(month.atDay(1).atStartOfDay(),
                 month.plusMonths(1).atDay(1).atStartOfDay())) {
-            if (count.getState() == DeviceState.ON) on[count.getDay()] = count.getTotal();
-            else off[count.getDay()] = count.getTotal();
+            if (count.getDay() != null && count.getDay() >= 1 && count.getDay() <= month.lengthOfMonth()) {
+                if (count.getState() == DeviceState.ON) on[count.getDay()] = count.getTotal();
+                else off[count.getDay()] = count.getTotal();
+            }
         }
         var days = new ArrayList<AlertStatisticsResponse.Day>();
         long totalOn = 0, totalOff = 0;

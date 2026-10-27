@@ -5,6 +5,8 @@ import com.iot.common.enums.DeviceState;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "action_history")
@@ -31,6 +33,7 @@ public class ActionHistory {
     private ActionResult status;
 
     @Column(name = "\"time\"", nullable = false)
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE_TIME)
     private LocalDateTime performedAt;
 
     protected ActionHistory() {
@@ -42,6 +45,14 @@ public class ActionHistory {
         this.action = action;
         this.status = ActionResult.LOADING;
         this.performedAt = LocalDateTime.now();
+    }
+
+    public ActionHistory(Device device, User user, DeviceState action, ActionResult status, LocalDateTime performedAt) {
+        this.device = device;
+        this.user = user;
+        this.action = action;
+        this.status = status;
+        this.performedAt = performedAt;
     }
 
     public void complete(DeviceState state) {

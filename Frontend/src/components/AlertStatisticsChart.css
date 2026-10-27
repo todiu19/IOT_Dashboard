@@ -10,8 +10,22 @@
   flex-wrap: wrap;
   gap: 14px;
 }
-.alert-month-field { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
-.alert-month-field .control { width: 168px; height: 36px; font-size: 12px; }
+.alert-month-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.alert-month-selector .control {
+  height: 36px;
+  font-size: 13px;
+  padding: 0 10px;
+}
+.alert-month-select {
+  width: 116px;
+}
+.alert-year-select {
+  width: 104px;
+}
 .alert-chart-totals { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 22px; }
 .alert-chart-totals strong { font-size: 23px; margin: 0 4px; }
 .alert-total-on { color: #ff7373; }

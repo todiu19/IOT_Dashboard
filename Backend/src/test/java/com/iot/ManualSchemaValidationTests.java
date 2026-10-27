@@ -27,6 +27,5 @@ class ManualSchemaValidationTests {
         assertEquals(3, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM devices", Integer.class));
         assertEquals(30, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM data_sensor", Integer.class));
         assertEquals(0, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM action_history", Integer.class));
-        assertEquals(0, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM alert_history", Integer.class));
     }
 }

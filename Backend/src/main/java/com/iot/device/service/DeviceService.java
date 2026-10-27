@@ -14,8 +14,6 @@ import com.iot.mqtt.MqttClientService;
 import com.iot.domain.repository.UserRepository;
 import com.iot.domain.repository.DeviceRepository;
 import com.iot.domain.repository.ActionHistoryRepository;
-import com.iot.domain.repository.AlertHistoryRepository;
-import com.iot.domain.entity.AlertHistory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -45,7 +43,6 @@ public class DeviceService {
 
     private final DeviceRepository devices;
     private final ActionHistoryRepository histories;
-    private final AlertHistoryRepository alertHistories;
     private final UserRepository users;
     private final PasswordEncoder passwords;
     private final MqttClientService mqtt;
@@ -57,7 +54,6 @@ public class DeviceService {
     public DeviceService(
             DeviceRepository devices,
             ActionHistoryRepository histories,
-            AlertHistoryRepository alertHistories,
             UserRepository users,
             PasswordEncoder passwords,
             MqttClientService mqtt,
@@ -68,7 +64,6 @@ public class DeviceService {
     ) {
         this.devices = devices;
         this.histories = histories;
-        this.alertHistories = alertHistories;
         this.users = users;
         this.passwords = passwords;
         this.mqtt = mqtt;
@@ -127,7 +122,6 @@ public class DeviceService {
                 .findFirstByDeviceIdAndStatusOrderByPerformedAtDesc(event.deviceId(), ActionResult.LOADING)
                 .orElse(null);
         if (event.deviceId() == 4 && device.getStatus() != event.status()) {
-            alertHistories.save(new AlertHistory(event.status(), LocalDateTime.now()));
             if (history == null) {
                 User system = users.findByUsername(AUTOMATION_USERNAME).orElseGet(() ->
                         users.save(new User("Hệ thống", AUTOMATION_USERNAME,

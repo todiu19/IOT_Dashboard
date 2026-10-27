@@ -4,9 +4,10 @@ import com.iot.common.enums.DeviceState;
 import com.iot.common.exception.ApiException;
 import com.iot.dashboard.service.AlertStatisticsService;
 import com.iot.device.service.DeviceService;
-import com.iot.domain.entity.AlertHistory;
-import com.iot.domain.repository.AlertHistoryRepository;
+import com.iot.domain.entity.ActionHistory;
+import com.iot.domain.entity.User;
 import com.iot.domain.repository.ActionHistoryRepository;
+import com.iot.domain.repository.DeviceRepository;
 import com.iot.domain.repository.UserRepository;
 import com.iot.history.service.ActionHistoryService;
 import com.iot.common.enums.ActionResult;
@@ -36,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class AlertStatisticsTests {
     @Autowired private DeviceService devices;
-    @Autowired private AlertHistoryRepository histories;
+    @Autowired private DeviceRepository deviceRepository;
     @Autowired private ActionHistoryRepository actionHistories;
     @Autowired private UserRepository users;
     @Autowired private ActionHistoryService actionHistoryService;
@@ -46,7 +47,6 @@ class AlertStatisticsTests {
 
     @BeforeEach
     void setUp() {
-        histories.deleteAll();
         actionHistories.deleteAll();
         jdbc.update("INSERT INTO devices (id, devicename, status) VALUES (4, 'Cảnh báo', 'OFF')");
     }
@@ -54,18 +54,15 @@ class AlertStatisticsTests {
     @Test
     void onlyConfirmedStateTransitionsCountAndDuplicateAcksAreIgnored() {
         devices.receiveDeviceStatus(new DeviceStatusEvent(4, DeviceState.OFF));
-        assertEquals(0, histories.count());
         assertEquals(0, actionHistories.count());
         devices.receiveDeviceStatus(new DeviceStatusEvent(4, DeviceState.ON));
         devices.receiveDeviceStatus(new DeviceStatusEvent(4, DeviceState.ON));
         devices.receiveDeviceStatus(new DeviceStatusEvent(4, DeviceState.ON));
-        assertEquals(1, histories.count());
         assertEquals(1, actionHistories.count());
         devices.receiveDeviceStatus(new DeviceStatusEvent(4, DeviceState.OFF));
         devices.receiveDeviceStatus(new DeviceStatusEvent(4, DeviceState.OFF));
         devices.receiveDeviceStatus(new DeviceStatusEvent(4, DeviceState.ON));
         devices.receiveDeviceStatus(new DeviceStatusEvent(1, DeviceState.OFF));
-        assertEquals(3, histories.count());
         assertEquals(3, actionHistories.count());
         assertEquals(1, users.findAll().stream().filter(user -> user.getUsername().equals("iot-system")).count());
         var saved = actionHistoryService.search(4, null, null, null, 0, 20);
@@ -93,12 +90,15 @@ class AlertStatisticsTests {
 
     @Test
     void monthlyCountsGroupEachDayAndExcludeOtherMonthsIncludingLeapDay() {
-        histories.save(new AlertHistory(DeviceState.ON, LocalDateTime.parse("2028-01-31T23:59:59")));
-        histories.save(new AlertHistory(DeviceState.ON, LocalDateTime.parse("2028-02-01T00:00:00")));
-        histories.save(new AlertHistory(DeviceState.OFF, LocalDateTime.parse("2028-02-01T10:00:00")));
-        histories.save(new AlertHistory(DeviceState.ON, LocalDateTime.parse("2028-02-29T12:00:00")));
-        histories.save(new AlertHistory(DeviceState.ON, LocalDateTime.parse("2028-02-29T23:59:59")));
-        histories.save(new AlertHistory(DeviceState.OFF, LocalDateTime.parse("2028-03-01T00:00:00")));
+        var dev4 = deviceRepository.findById(4).orElseThrow();
+        var sys = users.findByUsername("iot-system").orElseGet(() ->
+                users.save(new User("Hệ thống", "iot-system", "pass", "SYSTEM", null)));
+        actionHistories.save(new ActionHistory(dev4, sys, DeviceState.ON, ActionResult.ON, LocalDateTime.parse("2028-01-31T23:59:59")));
+        actionHistories.save(new ActionHistory(dev4, sys, DeviceState.ON, ActionResult.ON, LocalDateTime.parse("2028-02-01T00:00:00")));
+        actionHistories.save(new ActionHistory(dev4, sys, DeviceState.OFF, ActionResult.OFF, LocalDateTime.parse("2028-02-01T10:00:00")));
+        actionHistories.save(new ActionHistory(dev4, sys, DeviceState.ON, ActionResult.ON, LocalDateTime.parse("2028-02-29T12:00:00")));
+        actionHistories.save(new ActionHistory(dev4, sys, DeviceState.ON, ActionResult.ON, LocalDateTime.parse("2028-02-29T23:59:59")));
+        actionHistories.save(new ActionHistory(dev4, sys, DeviceState.OFF, ActionResult.OFF, LocalDateTime.parse("2028-03-01T00:00:00")));
 
         var month = statistics.getMonth("2028-02");
         assertEquals(29, month.days().size());

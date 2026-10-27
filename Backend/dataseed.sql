@@ -61,16 +61,6 @@ CREATE TABLE action_history (
 );
 
 
--- =========================
--- 6. LỊCH SỬ CẢNH BÁO TỰ ĐỘNG
--- =========================
-CREATE TABLE alert_history (
-    id SERIAL PRIMARY KEY,
-    state VARCHAR(255) NOT NULL,
-    occurred_at TIMESTAMP NOT NULL
-);
-
-CREATE INDEX idx_alert_history_time ON alert_history(occurred_at);
 
 -- =========================
 -- INDEX
